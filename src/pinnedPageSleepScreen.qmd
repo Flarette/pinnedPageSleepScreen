@@ -2557,12 +2557,14 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						// double on the top/right)
 						property int iw: Math.round(pinSleepIndicatorBattIcon.height * 1.46)
 						property int ih: Math.round(pinSleepIndicatorBattIcon.height * 0.66)
+						// -1px bottom / -1px whole-plate left: owner pixel-nudge
+						// round 3 (2026-08-23) off the deployed v0.45.3 frame
 						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x
-							+ Math.round((pinSleepIndicatorBattIcon.width - iw) / 2) - g
+							+ Math.round((pinSleepIndicatorBattIcon.width - iw) / 2) - g - 1
 						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y
 							+ Math.round((pinSleepIndicatorBattIcon.height - ih) / 2) - g
 						width: iw + 2 * g
-						height: ih + 2 * g
+						height: ih + 2 * g - 1
 						radius: Math.max(1, Math.round(2 * root.pinSleepBarScale))
 						antialiasing: false
 						color: pinSleepIndicator.pinSleepInkW ? "black" : "white"
@@ -2576,10 +2578,11 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						x: pinSleepBattPlate.x + pinSleepBattPlate.width
 						y: pinSleepBattPlate.y + Math.round((pinSleepBattPlate.height
 							- height) / 2)
+						// -1px right and bottom: same owner nudge round as the plate
 						width: Math.round(pinSleepIndicatorBattIcon.height * 0.08)
-							+ pinSleepBattPlate.g
+							+ pinSleepBattPlate.g - 1
 						height: Math.round(pinSleepIndicatorBattIcon.height * 0.23)
-							+ 2 * pinSleepBattPlate.g
+							+ 2 * pinSleepBattPlate.g - 1
 						radius: pinSleepBattPlate.radius
 						antialiasing: false
 						color: pinSleepBattPlate.color
