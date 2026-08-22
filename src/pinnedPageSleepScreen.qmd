@@ -2545,21 +2545,44 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// target's x/y, never inside the Row (see the ring note
 					// below).
 					Rectangle {
+						id: pinSleepBattPlate
 						visible: pinSleepIndicator.pinSleepHalo
 							&& pinSleepIndicatorBattRow.visible
 						property int g: pinSleepIndicator.pinSleepHaloG
-						property int iw: Math.round(pinSleepIndicatorBattIcon.height * 1.50)
+						// body WITHOUT the terminal nub (1.46H x 0.66H, bbox scan);
+						// the nub gets its own protruding plate below. CENTERED on
+						// the wrapper both axes (owner photo round 2 2026-08-23:
+						// the v0.45.2 right-anchor + 0.05H lift landed the plate
+						// up-and-right of the ink — no outline on the left/bottom,
+						// double on the top/right)
+						property int iw: Math.round(pinSleepIndicatorBattIcon.height * 1.46)
 						property int ih: Math.round(pinSleepIndicatorBattIcon.height * 0.66)
 						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x
-							+ pinSleepIndicatorBattIcon.width - iw - g
+							+ Math.round((pinSleepIndicatorBattIcon.width - iw) / 2) - g
 						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y
-							+ Math.round((pinSleepIndicatorBattIcon.height - ih) / 2)
-							- Math.round(pinSleepIndicatorBattIcon.height * 0.05) - g
+							+ Math.round((pinSleepIndicatorBattIcon.height - ih) / 2) - g
 						width: iw + 2 * g
 						height: ih + 2 * g
 						radius: Math.max(1, Math.round(2 * root.pinSleepBarScale))
 						antialiasing: false
 						color: pinSleepIndicator.pinSleepInkW ? "black" : "white"
+					}
+					// terminal-nub plate: a small rectangle protruding from the
+					// main plate's right edge, vertically centered, so the nub
+					// (0.08H wide x 0.23H tall in the bbox scan) sits on its own
+					// bit of outline instead of poking past the plate
+					Rectangle {
+						visible: pinSleepBattPlate.visible
+						x: pinSleepBattPlate.x + pinSleepBattPlate.width
+						y: pinSleepBattPlate.y + Math.round((pinSleepBattPlate.height
+							- height) / 2)
+						width: Math.round(pinSleepIndicatorBattIcon.height * 0.08)
+							+ pinSleepBattPlate.g
+						height: Math.round(pinSleepIndicatorBattIcon.height * 0.23)
+							+ 2 * pinSleepBattPlate.g
+						radius: pinSleepBattPlate.radius
+						antialiasing: false
+						color: pinSleepBattPlate.color
 					}
 					// Opaque glyph halos (v0.43, ring reworked v0.44): 8 same-size
 					// copies of each string in a ring under its core — declared
