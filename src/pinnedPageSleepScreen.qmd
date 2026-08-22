@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.6
+; pinnedPageSleepScreen v0.45.7
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -591,6 +591,29 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 					var p = it.mapToItem(root, 0, 0);
 					out.push({ "x": Math.floor(p.x), "y": Math.floor(p.y),
 						"w": Math.ceil(it.width), "h": Math.ceil(it.height) });
+				}
+				// OPEN FOLDOUTS are chrome too (v0.45.7, closes the v0.41
+				// transient-chrome gap for toolbar popups — ch1-proven: a
+				// debounced capture firing while the more-tools menu was open
+				// recorded it as PAGE CONTENT with toolbar-only rects, so the
+				// composite showed the menu forever). Every popup hangs off a
+				// ToolbarTool in toolLayout (stock rows are Loader delegates,
+				// tool = child.item; our button is a direct child with no
+				// foldout — the try/catch and undefined checks skip both it
+				// and the spacer Item). Nested foldout pages render inside
+				// the owning tool's foldout rect, so the top-level rect
+				// covers them.
+				for (var f = 0; f < toolLayout.children.length; f++) {
+					try {
+						var tc = toolLayout.children[f];
+						var tt = (tc && tc.item !== undefined && tc.item) ? tc.item : tc;
+						if (!tt || tt.foldoutVisible !== true) continue;
+						var fo = tt.foldout;
+						if (!fo || !fo.visible || fo.width <= 0 || fo.height <= 0) continue;
+						var fp = fo.mapToItem(root, 0, 0);
+						out.push({ "x": Math.floor(fp.x), "y": Math.floor(fp.y),
+							"w": Math.ceil(fo.width), "h": Math.ceil(fo.height) });
+					} catch (e) { }
 				}
 				return out;
 			}
