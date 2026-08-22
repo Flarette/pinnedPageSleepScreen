@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.2
+; pinnedPageSleepScreen v0.45.6
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -551,16 +551,34 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 			// sleep now, showing this screen (v0.45.1: shared by the toolbar
 			// button's long-press and the overflow rows' — the rows live in
 			// files where Values/BatteryManager may not resolve, this root is
-			// where both provably do). Arm the one-shot flag the Navigator's
-			// transition handler reads, then the verdict-tested entry point
-			// (goToSleep() is the guarded low-level one — never call it). The
-			// PIN guard sits in that handler, the only scope where the
-			// passcode state is reachable. The flag is deliberately NOT in the
-			// Settings block: a crash mid-sleep must not leave it armed across
-			// a restart.
+			// where both provably do). v0.45.6, owner ruling: "this screen"
+			// means the PAGE — the chrome hold blanks every bar first and the
+			// timer gives the EPD compositor one flush (~350-450ms for big
+			// regions, ch0's hold captures prove clean by ~800ms) before the
+			// entry grabs the fb. The hold is released by the pin chain
+			// (pinned) or the watch's wake release (unpinned) — never here,
+			// the fb must stay blanked through the 0->2 grab. Then the
+			// one-shot flag the Navigator's transition handler reads, and the
+			// verdict-tested entry point (goToSleep() is the guarded
+			// low-level one — never call it). The PIN guard sits in that
+			// handler, the only scope where the passcode state is reachable.
+			// The flag is deliberately NOT in the Settings block: a crash
+			// mid-sleep must not leave it armed across a restart.
 			function pinSleepSleepNow() {
-				Values.pinSleepForceFreeze = Date.now();
-				BatteryManager.requestSleep();
+				root.pinSleepChromeHold = true;
+				console.log("pinSleep sleepNow: hold engaged, entry in "
+					+ pinSleepSleepNowTimer.interval + "ms");
+				pinSleepSleepNowTimer.restart();
+			}
+
+			Timer {
+				id: pinSleepSleepNowTimer
+				interval: 900
+				repeat: false
+				onTriggered: {
+					Values.pinSleepForceFreeze = Date.now();
+					BatteryManager.requestSleep();
+				}
 			}
 
 			function pinSleepOwnRects() {
@@ -696,9 +714,10 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/SettingsMenu.qml
 				Layout.fillWidth: true
 				property bool pinSleepPinned: root.toolbar.pinSleepPageId !== ""
 					&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
-				label: pinSleepSettingsRow.pinSleepPinned
-					? qsTr("Remove from sleep screen")
-					: qsTr("Set as sleep screen")
+				// static label (owner ruling 2026-08-23): the swap pair's longer
+				// leg single-handedly widened the whole foldout; the icon does
+				// the state communication
+				label: qsTr("Sleep screen")
 				iconSource: pinSleepSettingsRow.pinSleepPinned
 					? "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreenPinned.svg"
 					: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
@@ -707,28 +726,27 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/SettingsMenu.qml
 					&& root.toolbar.toolbarPositioner.isPortraitOrientation
 
 				property real pinSleepHeldAt: 0
+				// close BEFORE the toggle (v0.45.6, ch1-proven): applyPin raises
+				// the chrome hold, which hides the whole container — a close
+				// issued after lands on an already-hidden foldout and does not
+				// stick, so the menu re-rendered on hold release and the NEXT
+				// sleep's entry capture published it as a chapter. Closing
+				// first, while the foldout is live, is what touchLock does.
+				// Unpin keeps the menu open (owner ruling) — the row flips in
+				// place.
 				onClicked: {
 					if (Date.now() - pinSleepSettingsRow.pinSleepHeldAt < 1000) return;
 					var pinSleepWasPinned = pinSleepSettingsRow.pinSleepPinned;
-					root.toolbar.pinSleepToggleRequested();
 					if (!pinSleepWasPinned) root.toolbar.closeFoldout();
+					root.toolbar.pinSleepToggleRequested();
 				}
+				// sleep-now owns its own delay + chrome hold since v0.45.6 —
+				// the hold blanks menu AND bars in one flush (owner: the freeze
+				// must show the bare page)
 				onPressAndHold: {
 					pinSleepSettingsRow.pinSleepHeldAt = Date.now();
-					root.toolbar.closeFoldout();
-					pinSleepSettingsSleepTimer.restart();
-				}
-				// 700ms, not a render-frame guess: the owner's first live run
-				// (v0.45.1, 250ms) baked the fully-open menu into current.bmp —
-				// fastshot reads the FRAMEBUFFER, which only changes when the
-				// EPD compositor flushes, and a menu-sized region takes
-				// ~350-450ms (Gallery3 full-frame timing). 700 clears that with
-				// margin and still reads as "immediately".
-				Timer {
-					id: pinSleepSettingsSleepTimer
-					interval: 700
-					repeat: false
-					onTriggered: root.toolbar.pinSleepSleepNow()
+					try { root.toolbar.closeFoldout(); } catch (e) { }
+					root.toolbar.pinSleepSleepNow();
 				}
 			}
 
@@ -756,9 +774,9 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/AdditionalEditingToolsMenu.qml
 					Layout.fillWidth: true
 					property bool pinSleepPinned: root.toolbar.pinSleepPageId !== ""
 						&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
-					label: pinSleepMoreToolsRow.pinSleepPinned
-						? qsTr("Remove from sleep screen")
-						: qsTr("Set as sleep screen")
+					// static label, icon carries state (owner ruling — see the
+					// settings-menu twin)
+					label: qsTr("Sleep screen")
 					iconSource: pinSleepMoreToolsRow.pinSleepPinned
 						? "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreenPinned.svg"
 						: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
@@ -767,23 +785,18 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/AdditionalEditingToolsMenu.qml
 						&& !root.toolbar.toolbarPositioner.isPortraitOrientation
 
 					property real pinSleepHeldAt: 0
+					// close-before-toggle + shared sleep-now: see the
+					// settings-menu twin for the ch1-proven reasoning
 					onClicked: {
 						if (Date.now() - pinSleepMoreToolsRow.pinSleepHeldAt < 1000) return;
 						var pinSleepWasPinned = pinSleepMoreToolsRow.pinSleepPinned;
-						root.toolbar.pinSleepToggleRequested();
 						if (!pinSleepWasPinned) root.toolbar.closeFoldout();
+						root.toolbar.pinSleepToggleRequested();
 					}
 					onPressAndHold: {
 						pinSleepMoreToolsRow.pinSleepHeldAt = Date.now();
-						root.toolbar.closeFoldout();
-						pinSleepMoreToolsSleepTimer.restart();
-					}
-					// 700ms for the same fb-flush reason as the settings row
-					Timer {
-						id: pinSleepMoreToolsSleepTimer
-						interval: 700
-						repeat: false
-						onTriggered: root.toolbar.pinSleepSleepNow()
+						try { root.toolbar.closeFoldout(); } catch (e) { }
+						root.toolbar.pinSleepSleepNow();
 					}
 				}
 			}
@@ -1484,6 +1497,14 @@ AFFECT /qml/device/view/documentview/DeviceSceneView.qml
 						// are direct connections that run before control returns to the
 						// event loop, so the fb here still holds the document.
 						pinSleepWatch.sleepEntryCapture(previous, next);
+						// a sleep-now hold on an UNPINNED page has no capture chain
+						// to release it, and the 20s cap is frozen through suspend —
+						// waking would sit chrome-less for the cap's remainder.
+						// Release on wake; the pinned path's reload hygiene keeps
+						// owning its own holds. (v0.45.6)
+						if (next === 0 && pinSleepWatch.chromeHeld
+								&& !pinSleepWatch.pinActive)
+							pinSleepWatch.releaseHold();
 						if (!pinSleepWatch.pinActive) return;
 						if (!pinSleepWatch.chromeHeld
 								&& root.toolbar && root.toolbar.visible === false)
