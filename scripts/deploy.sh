@@ -51,6 +51,7 @@ scp -q src/pinnedPageSleepScreen.qmd src/hideSidebarGuides.qmd "$DEV:$EXTHOME/"
 # any device that got the v0.1.0 wave is cleaned by its next deploy.
 ssh "$DEV" "rm -f $EXTHOME/timezoneLocalePicker.qmd"
 scp -q assets/pinnedSleepScreen.svg "$DEV:$EXTHOME/pinnedSleepScreen.svg"
+scp -q assets/pinnedSleepScreenPinned.svg "$DEV:$EXTHOME/pinnedSleepScreenPinned.svg"
 scp -q assets/pinnedSleepBolt.svg "$DEV:$EXTHOME/pinnedSleepBolt.svg"
 scp -q assets/pinnedSleepBoltInv.svg "$DEV:$EXTHOME/pinnedSleepBoltInv.svg"
 # stage + rename: the running xochitl has the old .so mapped — an in-place

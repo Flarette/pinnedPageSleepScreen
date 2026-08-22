@@ -282,9 +282,34 @@ the banner pill again.
    render a toggle next to the wider row label.
 Long-press sleep-now works correctly as shipped — don't touch it.
 
-Smoke test: button present in both toolbar-edge layouts (directly and via
-more-tools), icon swaps with pin state, popup row shows a toggle, legacy
-page-selection control gone, long-press still sleeps.
+IMPLEMENTED 2026-08-22 (undeployed; owner smoke test pending). Record:
+- Popup registration mirrors installed touchLock's split exactly:
+  SettingsMenu.qml row when cramped (showableToolsCount <= 7) + portrait,
+  AdditionalEditingToolsMenu.qml ("More tools") row when cramped + landscape;
+  same anchors touchLock uses, preflight green with all 28 installed mods.
+- The rows are ArkControls.FoldoutToggle driven the way the installed
+  penLayerMemory mod PROVES works on-device: `checked` stays a pure binding
+  to the toolbar bus (applyPin's optimistic pinnedPageId flip moves it in the
+  tap's frame) and the tap lands as onClicked — FoldoutToggle does not
+  self-flip a bound checked (penLayerMemory's live binding would have broken
+  on first use otherwise). closeFoldout() after the request, touchLock's
+  order, so the popup can't reappear over the hold release and bake into a
+  chapter.
+- Toolbar button: selected-plate Rectangle removed (back to the plate-less
+  hideShowButton `background: Item {}` template); pin state = icon swap
+  between pinnedSleepScreen.svg (empty moon) and NEW asset
+  pinnedSleepScreenPinned.svg (filled moon, geometry byte-identical). Asset
+  wired into deploy.sh, package.sh and the main VELBUILD.
+- Legacy control fully removed: PagesMoreFoldout.qml AFFECT and the whole
+  PagesActions.qml AFFECT (pinSleepCtl) deleted. Its one non-UI duty — the
+  pin-time blind pinned.png (the no-chapters floor) — moved into
+  pinSleepApplyPin: rm-shot at 300ms, which lands INSIDE the chrome hold the
+  same call just raised (owner-corrected from my 800ms draft: the legacy 2s
+  covered the overview->document page jump, which no longer exists; the
+  hold hides the tree synchronously and the repaint hits the fb in
+  ~50-150ms), so the floor image is now chrome-free — better than legacy.
+- Label wording "Set as sleep screen" (owner ruling; same string the legacy
+  control used, no new translation surface).
 
 ## Closed / settled this session (do not reopen)
 

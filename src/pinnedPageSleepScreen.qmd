@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.44.5
+; pinnedPageSleepScreen v0.45.0
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -139,14 +139,21 @@
 ; pinned collapsed to the freeze fallback (or the stock carousel with light
 ; sleep off), which is what made the v0.40 smoke test look like a pass.
 ;
-; Toolbar button (v0.37): tap = pin/unpin the page you are on, long-press = sleep
-; now showing this very screen. It is a bare ArkControls.ToolButton (the stock
-; hideShowButton template), NOT a ToolbarTool: floating.qmd owns a `pressAndHold`
-; signal on ToolbarTool.qml and a second declaration would not compile. The pin
-; write itself lives ONE place — DocumentView's pinSleepApplyPin() — because that
-; root is the only object both callers can reach (the toolbar via its own bus, the
-; pages-overview foldout via pageActions.documentView, the pattern its chrome-hold
-; already uses); the overview keeps its selection handling, toast and page jump.
+; Toolbar button (v0.37, completed v0.45): tap = pin/unpin the page you are on,
+; long-press = sleep now showing this very screen. It is a bare
+; ArkControls.ToolButton (the stock hideShowButton template), NOT a ToolbarTool:
+; floating.qmd owns a `pressAndHold` signal on ToolbarTool.qml and a second
+; declaration would not compile. Pin state shows by SWAPPING the icon (empty vs
+; filled moon — the touchLock open/closed-padlock pattern), not by a selected
+; plate. On a cramped toolbar (showableToolsCount <= 7, the short-edge layout)
+; the button hides and a FoldoutToggle row takes over inside the stock overflow
+; popups — SettingsMenu (portrait) / AdditionalEditingToolsMenu (landscape), the
+; same split touchLock ships. The pin write itself lives ONE place —
+; DocumentView's pinSleepApplyPin() — because that root is the only object every
+; caller can reach through the toolbar bus; it also takes the pin-time blind
+; pinned.png shot (the no-chapters floor) 300ms into the chrome hold, so the
+; floor image is chrome-free. The v0.11-v0.44 page-selection foldout control was
+; REMOVED in v0.45 (the toolbar button replaced it, it was never meant to stay).
 ; Long-press does NOT pre-write a power record (the Navigator's own write at the
 ; real transition would clobber it): it sets the one-shot Values.pinSleepForceFreeze
 ; timestamp and calls BatteryManager.requestSleep() (the verdict-tested API — never
@@ -177,35 +184,6 @@
 ; createDocumentFromPages, floating) patch the same roots, so root-level attached
 ; handlers (Component.onCompleted etc.) would collide and break QML compilation.
 ; Root-level property/function/signal inserts are fine (floating.qmd does the same).
-
-AFFECT /qml/device/view/navigator/PagesMoreFoldout.qml
-	TRAVERSE FoldoutOverlay#root
-		LOCATE AFTER ALL
-		INSERT {
-			signal pinSleepClicked
-			property string pinSleepLabel: qsTr("Set as sleep screen")
-			property bool pinSleepVisible: true
-		}
-
-		TRAVERSE ColumnLayout
-			LOCATE AFTER ArkControls.FoldoutItem#addAfterItem
-			INSERT {
-				ArkControls.FoldoutItem {
-					id: pinSleepItem
-					objectName: "pinSleepItem"
-					visible: root.pinSleepVisible
-					Layout.fillWidth: true
-					label: root.pinSleepLabel
-					// ark's Icon resolves iconSource itself (own SVG loader + colorizer). It
-					// opens the value as a QFile: bare path works, "file://" URL does NOT
-					// (renders blank). Plain QML Image is the opposite — don't mix them up.
-					iconSource: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
-					onClicked: root.pinSleepClicked()
-				}
-			}
-		END TRAVERSE
-	END TRAVERSE
-END AFFECT
 
 ; ---------------------------------------------------------------------------
 ; Navigator (always alive, even on the home screen): records every display power
@@ -528,8 +506,9 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 		INSERT {
 			property bool pinSleepChromeHold: false
 			property var pinSleepChromeQuery: null
-			// bumped by PagesActions after every pin/unpin write; pin state can change
-			// with no page/document signal (same-page pin), so the watch listens here
+			// bumped by pinSleepApplyPin after every pin/unpin write; pin state can
+			// change with no page/document signal (same-page pin), so the watch
+			// listens here
 			property int pinSleepKick: 0
 
 			// page identity in toolbar scope, pushed down by DocumentView (the stock
@@ -596,28 +575,21 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 
 					visible: root.expanded && pinSleepButton.shown
 					focusPolicy: Qt.NoFocus
-					// The template's `background: Item {}` cannot come along: ark's
-					// primary_inverted tokens draw the SELECTED state as a black plate
-					// with a white glyph (ark/tokens/IconButtonLarge.qml), so an empty
-					// background would render "pinned" as a white icon on the white bar
-					// — invisible. hideShowButton can afford to drop the plate because
-					// it is never selected. Own plate instead, closeButton's precedent
-					// in this same file. Its gestureMargin insets are dropped with it:
-					// they exist so the FIRST layout child's background reaches back
-					// under toolLayout's margin, and on a mid-column button they would
-					// push the plate 20px over its neighbour.
-					background: Rectangle {
-						color: "black"
-						visible: pinSleepButton.selected
-					}
+					// Plate-less, the full hideShowButton template: pin state is
+					// carried by the ICON SWAP below (v0.45, the touchLock
+					// open/closed-padlock pattern), never by ark's selected state,
+					// so the black selected plate (and the v0.37 Rectangle that
+					// stood in for it) has no job left.
+					background: Item {}
 					// ToolButton -> IconButton -> contentItem: Icon, i.e. ark's own
 					// loader: it opens the value as a QFile, so a bare path works and
-					// "file://" renders blank (the FoldoutItem above uses the same).
-					iconSource: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
-					// pin state through ark's on-state (ButtonBase.selected) instead
-					// of a second asset; the id comparison is fed by pinSleepKick
-					selected: root.pinSleepPageId !== ""
-						&& root.pinSleepPageId === root.pinSleepPinnedPageId
+					// "file://" renders blank (the popup rows use the same).
+					// Empty moon = tap to pin, filled moon = pinned (tap unpins);
+					// the id comparison is fed by pinSleepKick via the watch.
+					iconSource: (root.pinSleepPageId !== ""
+							&& root.pinSleepPageId === root.pinSleepPinnedPageId)
+						? "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreenPinned.svg"
+						: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
 
 					property real pinSleepHeldAt: 0
 
@@ -655,6 +627,88 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 END AFFECT
 
 ; ---------------------------------------------------------------------------
+; Overflow-popup rows (v0.45): on a cramped toolbar (showableToolsCount <= 7,
+; the short-edge layout) the stock overflow tools collapse into two popups and
+; the toolbar button above hides — these rows take over there, the touchLock
+; split exactly: SettingsMenu when the toolbar sits portrait, the "More tools"
+; AdditionalEditingToolsMenu when landscape. Both files already import
+; ark.controls, and both roots are ToolbarTools whose `toolbar` reaches the
+; same bus the button uses, so the rows need no new plumbing. The control is a
+; FoldoutToggle — the owner-ruled "toggle next to the wider row label" — used
+; the way the installed penLayerMemory mod proves works on this device: tap
+; lands as `clicked` (FoldoutToggle is Button-family; the tap does NOT flip a
+; bound `checked` — penLayerMemory's live binding would have broken on first
+; use otherwise), so onClicked fires the toggle request and `checked` is a
+; pure display of pin state, bound to the bus. applyPin's optimistic
+; pinnedPageId flip moves the toggle in the same frame as the tap.
+; closeFoldout() runs AFTER the request (touchLock's order): the popup would
+; otherwise reappear over the chrome hold's release and could bake into a
+; later chapter. No long-press here — sleep-now stays a toolbar-button
+; gesture.
+; ---------------------------------------------------------------------------
+AFFECT /qt/qml/xofm/libs/toolbar/qml/SettingsMenu.qml
+	TRAVERSE ToolbarTool#root > Component#settingsComponent > ColumnLayout#content
+		LOCATE AFTER ArkControls.FoldoutDivider
+		INSERT {
+			ArkControls.FoldoutToggle {
+				id: pinSleepSettingsRow
+				objectName: "pinSleepSettingsRow"
+				Layout.fillWidth: true
+				label: qsTr("Set as sleep screen")
+				iconSource: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
+				visible: root.toolbar.pinSleepPageId !== ""
+					&& root.toolbar.showableToolsCount <= 7
+					&& root.toolbar.toolbarPositioner.isPortraitOrientation
+
+				checked: root.toolbar.pinSleepPageId !== ""
+					&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
+				onClicked: {
+					root.toolbar.pinSleepToggleRequested();
+					root.toolbar.closeFoldout();
+				}
+			}
+
+			ArkControls.FoldoutDivider {
+				Layout.fillWidth: true
+				visible: pinSleepSettingsRow.visible
+			}
+		}
+	END TRAVERSE
+END AFFECT
+
+AFFECT /qt/qml/xofm/libs/toolbar/qml/AdditionalEditingToolsMenu.qml
+	TRAVERSE ToolbarTool#root
+		TRAVERSE ColumnLayout
+			LOCATE AFTER ALL
+			INSERT {
+				ArkControls.FoldoutDivider {
+					Layout.fillWidth: true
+					visible: pinSleepMoreToolsRow.visible
+				}
+
+				ArkControls.FoldoutToggle {
+					id: pinSleepMoreToolsRow
+					objectName: "pinSleepMoreToolsRow"
+					Layout.fillWidth: true
+					label: qsTr("Set as sleep screen")
+					iconSource: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
+					visible: root.toolbar.pinSleepPageId !== ""
+						&& root.toolbar.showableToolsCount <= 7
+						&& !root.toolbar.toolbarPositioner.isPortraitOrientation
+
+					checked: root.toolbar.pinSleepPageId !== ""
+						&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
+					onClicked: {
+						root.toolbar.pinSleepToggleRequested();
+						root.toolbar.closeFoldout();
+					}
+				}
+			}
+		END TRAVERSE
+	END TRAVERSE
+END AFFECT
+
+; ---------------------------------------------------------------------------
 ; DocumentView: Item#_uiContainer holds ALL chrome (Toolbar, battery/page/title
 ; labels, notification bar, zoom button, floating.qmd's panels) while sceneView is
 ; a sibling outside it — one binding blanks every overlay at once. Never touch
@@ -668,21 +722,20 @@ AFFECT /qml/device/view/documentview/DocumentView.qml
 			property alias pinSleepChromeHold: toolbar.pinSleepChromeHold
 			property alias pinSleepKick: toolbar.pinSleepKick
 
-			// The one pin/unpin write (v0.37). It lives on DocumentView's root
-			// because that is the only object BOTH callers reach: the toolbar
-			// button (its handler is right here, in the Toolbar block below) and
-			// the pages-overview foldout item (pageActions.documentView — the very
-			// hop its chrome-hold already takes). Selection-free: the caller
-			// supplies the identity, so the overview keeps its selection handling,
-			// its toast and its page jump while the toolbar does neither.
-			// Chrome hold on the pin path: engaged for BOTH callers. A new pin
-			// drops the chapter book (transform check), and a capture taken with
-			// chrome up produces holes and no clean ch0 — so the ~1.2s of hidden
-			// chrome (write -> 400ms kick -> 400ms settle -> capture -> release)
-			// buys the chrome-free base image. From the overview that window is
-			// invisible (the overview already covers chrome); from the toolbar it
-			// is one blink of the bar, the same accepted cost as the transform
-			// path. DeviceSceneView releases it, 20s cap.
+			// The one pin/unpin write (v0.37; sole path since v0.45 removed the
+			// page-selection control). Every caller — the toolbar button and the
+			// overflow-popup FoldoutToggle rows — arrives through the toolbar
+			// bus's pinSleepToggleRequested, whose handler sits in the Toolbar
+			// block below; this root is the only object that handler can hand
+			// the page identity to.
+			// Chrome hold on the pin path: a new pin drops the chapter book
+			// (transform check), and a capture taken with chrome up produces
+			// holes and no clean ch0 — so the ~1.2s of hidden chrome (write ->
+			// 400ms kick -> 400ms settle -> capture -> release) buys the
+			// chrome-free base image. The hold hides all of _uiContainer, the
+			// open overflow foldout included, so the popup rows get the same
+			// clean window; one blink of the bar is the accepted cost, same as
+			// the transform path. DeviceSceneView releases it, 20s cap.
 			XoviMessageBroker {
 				id: pinSleepDocBroker
 			}
@@ -712,6 +765,17 @@ AFFECT /qml/device/view/documentview/DocumentView.qml
 				// button must not look unchanged until then
 				toolbar.pinSleepPinnedPageId = unpin ? "" : pageId;
 				toolbar.pinSleepKick++;
+				// pin-time blind pinned.png (v0.45, was the removed page-selection
+				// control's job): the no-chapters floor shown after a reboot that
+				// beats the first persisted nap. 300ms lands inside the chrome
+				// hold just raised above — the tree hides chrome synchronously
+				// and the repaint reaches the fb in ~50-150ms — so the floor
+				// image is chrome-free, which the legacy 2s post-page-jump shot
+				// never guaranteed. rm-shot, not fastshot: this one persists on
+				// eMMC as PNG.
+				if (!unpin)
+					pinSleepDocBroker.sendSimpleSignal("takeScreenshot",
+						"/home/root/.pinnedSleepScreen/pinned.png,300");
 			}
 
 			Item {
@@ -767,119 +831,6 @@ AFFECT /qml/device/view/documentview/DocumentView.qml
 	END TRAVERSE
 END AFFECT
 
-AFFECT /qml/device/view/documentview/PagesActions.qml
-	IMPORT net.asivery.XoviMessageBroker 2.0
-	TRAVERSE Item#pageActions
-		LOCATE BEFORE Connections[.target=document]
-		INSERT {
-			Item {
-				id: pinSleepCtl
-				visible: false
-
-				readonly property string imagePath: "/home/root/.pinnedSleepScreen/pinned.png"
-				readonly property string statePath: "file:///home/root/.pinnedSleepScreen/pinned.json"
-
-				property string docId: ""
-				property string pageId: ""
-				property int pageIdx: -1
-
-				XoviMessageBroker {
-					id: pinSleepCtlBroker
-				}
-
-				function load() {
-					var xhr = new XMLHttpRequest();
-					xhr.onreadystatechange = function() {
-						if (xhr.readyState !== XMLHttpRequest.DONE) return;
-						try {
-							var j = JSON.parse(xhr.responseText);
-							pinSleepCtl.docId = j.docId || "";
-							pinSleepCtl.pageId = j.pageId || "";
-							pinSleepCtl.pageIdx = (j.pageIdx !== undefined) ? j.pageIdx : -1;
-						} catch (e) {
-							pinSleepCtl.docId = "";
-							pinSleepCtl.pageId = "";
-							pinSleepCtl.pageIdx = -1;
-						}
-					};
-					xhr.open("GET", pinSleepCtl.statePath);
-					xhr.send();
-				}
-
-				// the write, the chrome hold and the kick all live in DocumentView's
-				// pinSleepApplyPin() (v0.37) — the toolbar button is the second caller
-				// and cannot reach anything in this document. Guarded the same way the
-				// chrome-hold hop always was: documentView is a nullable Item property.
-				function apply(docId, pageId, pageIdx, unpin) {
-					try {
-						pageActions.documentView.pinSleepApplyPin(docId, pageId, pageIdx, unpin);
-					} catch (e) { }
-				}
-
-				function toggle() {
-					if (pageSelection.isEmpty || pageSelection.pages.length !== 1) return;
-					var idx = pageSelection.pages[0];
-					var pid = "";
-					try { pid = document.idForPage(idx); } catch (e) { }
-					if (!pid) return;
-
-					var unpin = (document.id === pinSleepCtl.docId && pid === pinSleepCtl.pageId);
-
-					pageSelection.clear();
-					internal.moreButtonState = PagesActions.MoreButtonState.Default;
-
-					if (unpin) {
-						pinSleepCtl.docId = ""; pinSleepCtl.pageId = ""; pinSleepCtl.pageIdx = -1;
-						pinSleepCtl.apply("", "", -1, true);
-						notificationQueue.enqueue({
-							"text": qsTr("Removed from sleep screen"),
-							"style": Notification.Secondary
-						});
-					} else {
-						pinSleepCtl.docId = document.id; pinSleepCtl.pageId = pid; pinSleepCtl.pageIdx = idx;
-						pinSleepCtl.apply(document.id, pid, idx, false);
-						notificationQueue.enqueue({
-							"text": qsTr("Page set as sleep screen"),
-							"style": Notification.Secondary
-						});
-						// jump to the page so the capture shows it, not this menu
-						Qt.callLater(function() {
-							try {
-								pageActions.documentView.openPage(idx, DocumentView.ScrollPosition.Restore);
-							} catch (e) {
-								pageActions.requestPage.page = idx;
-								pageActions.requestPage.trigger();
-							}
-							pinSleepCtlBroker.sendSimpleSignal("takeScreenshot",
-								pinSleepCtl.imagePath + ",2000");
-						});
-					}
-				}
-
-				Component.onCompleted: pinSleepCtl.load()
-			}
-		}
-
-		TRAVERSE Component#moreFoldout
-			TRAVERSE PagesMoreFoldout
-				LOCATE AFTER ALL
-				INSERT {
-					pinSleepVisible: !pageSelection.isEmpty && pageSelection.pages.length === 1
-					pinSleepLabel: (!pageSelection.isEmpty
-							&& pageSelection.pages.length === 1
-							&& document.id === pinSleepCtl.docId
-							&& pageSelection.pages[0] === pinSleepCtl.pageIdx)
-						? qsTr("Remove from sleep screen")
-						: qsTr("Set as sleep screen")
-					onPinSleepClicked: {
-						pinSleepCtl.toggle();
-					}
-				}
-			END TRAVERSE
-		END TRAVERSE
-	END TRAVERSE
-END AFFECT
-
 AFFECT /qml/device/view/documentview/DeviceSceneView.qml
 	IMPORT net.asivery.XoviMessageBroker 2.0
 	TRAVERSE ?#root
@@ -903,7 +854,7 @@ AFFECT /qml/device/view/documentview/DeviceSceneView.qml
 					&& root.document.id === docId
 					&& root.document.idForPage(root.page) === pageId
 
-				// hold state lives on the toolbar bus so PagesActions can pre-engage it
+				// hold state lives on the toolbar bus (pinSleepApplyPin pre-engages it)
 				readonly property bool chromeHeld: root.toolbar
 					? root.toolbar.pinSleepChromeHold === true : false
 

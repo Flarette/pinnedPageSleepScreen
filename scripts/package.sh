@@ -63,6 +63,7 @@ mkdir -p "$MAIN/home/root/xovi/exthome/qt-resource-rebuilder" \
 # both bolt SVGs: the black bar style selects pinnedSleepBoltInv.svg — a
 # missing file renders an empty Image where the charging bolt should be
 cp src/pinnedPageSleepScreen.qmd assets/pinnedSleepScreen.svg \
+    assets/pinnedSleepScreenPinned.svg \
     assets/pinnedSleepBolt.svg assets/pinnedSleepBoltInv.svg \
     "$MAIN/home/root/xovi/exthome/qt-resource-rebuilder/"
 cp extensions/fastshot/fastshot.so "$MAIN/home/root/xovi/extensions.d/"

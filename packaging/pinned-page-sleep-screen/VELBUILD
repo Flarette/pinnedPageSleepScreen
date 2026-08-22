@@ -29,6 +29,9 @@ package() {
 		"$pkgdir"/home/root/xovi/exthome/qt-resource-rebuilder/pinnedPageSleepScreen.qmd
 	install -Dm644 "$srcdir"/pinnedSleepScreen.svg \
 		"$pkgdir"/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg
+	# pinned-state icon-swap twin of the toolbar/popup icon (v0.45)
+	install -Dm644 "$srcdir"/pinnedSleepScreenPinned.svg \
+		"$pkgdir"/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreenPinned.svg
 	# both bolt variants: the black bar style selects pinnedSleepBoltInv.svg
 	install -Dm644 "$srcdir"/pinnedSleepBolt.svg \
 		"$pkgdir"/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepBolt.svg
