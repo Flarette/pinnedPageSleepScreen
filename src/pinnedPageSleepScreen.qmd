@@ -122,9 +122,11 @@
 ; blends into it. The light-sleep arms (fromLight/lightPhase) are the idle
 ; discriminator. Sampled outline outcomes also plate the stock battery widget
 ; (the one element the halo ring cannot dilate) with an opposite-color
-; rectangle underneath — widget footprint + halo gap, hairline-rounded ~2px
-; corners (NOT the bolt overshoot: the bolt asset outlines itself — owner
-; correction 2026-08-23), the widget itself untouched.
+; rectangle underneath — the widget's measured INK footprint + halo gap
+; (1.50Hx0.66H right-aligned in the wrapper, docs/battery-widget/ bbox scan),
+; hairline-rounded ~2px corners (NOT the wrapper and NOT the bolt overshoot:
+; the wrapper tracks the % text's line box and the bolt asset outlines itself
+; — owner rounds 2026-08-23), the widget itself untouched.
 ; The light-sleep banner deliberately does NOT mirror any of this (see there).
 ;
 ; Sleep-entry chapter (v0.40): a stroke written seconds before sleep missed the
@@ -2503,24 +2505,37 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// internals are compiled), so on the outline outcome it gets
 					// an opposite-color rectangle UNDERNEATH instead — widget
 					// footprint plus the halo gap of visible outline, the widget
-					// itself untouched. The footprint is the icon wrapper ONLY
-					// (owner correction 2026-08-23): the charging bolt carries
-					// its own outline in the asset, so the plate must not chase
-					// its 1.3x overshoot — a bolt-tall plate read as a big
-					// square. Corners get a hairline rounding (~2px CSS-feel,
-					// owner ruling: softer than the icon's own sharp edges).
-					// Same halo color rule as the text rings: the opposite of
-					// the run ink. Declared before the rings so it paints under
-					// everything; positioned by reading the target's x/y, never
-					// inside the Row (see the ring note below).
+					// itself untouched. The footprint is the widget's INK, not
+					// the icon wrapper (owner photo round 2026-08-23: the
+					// wrapper tracks the % text's full LINE BOX, and the
+					// compiled widget pads its implicit box besides — the
+					// wrapper-sized plate read as a big square around a small
+					// battery). Ink geometry measured off docs/battery-widget/
+					// (pixel bbox scan of the 100% capture, wrapper H=52 there):
+					// body incl. terminal nub 78x34 = 1.50H x 0.66H,
+					// RIGHT-aligned in the wrapper (all the padding is on the
+					// left), body center 0.05H above the bolt-derived wrapper
+					// center. The bolt is excluded on purpose — its asset
+					// outlines itself. Corners get a hairline rounding (~2px
+					// CSS-feel, owner ruling: softer than the icon's own sharp
+					// edges). Same halo color rule as the text rings: the
+					// opposite of the run ink. Declared before the rings so it
+					// paints under everything; positioned by reading the
+					// target's x/y, never inside the Row (see the ring note
+					// below).
 					Rectangle {
 						visible: pinSleepIndicator.pinSleepHalo
 							&& pinSleepIndicatorBattRow.visible
 						property int g: pinSleepIndicator.pinSleepHaloG
-						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x - g
-						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y - g
-						width: pinSleepIndicatorBattIcon.width + 2 * g
-						height: pinSleepIndicatorBattIcon.height + 2 * g
+						property int iw: Math.round(pinSleepIndicatorBattIcon.height * 1.50)
+						property int ih: Math.round(pinSleepIndicatorBattIcon.height * 0.66)
+						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x
+							+ pinSleepIndicatorBattIcon.width - iw - g
+						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y
+							+ Math.round((pinSleepIndicatorBattIcon.height - ih) / 2)
+							- Math.round(pinSleepIndicatorBattIcon.height * 0.05) - g
+						width: iw + 2 * g
+						height: ih + 2 * g
 						radius: Math.max(1, Math.round(2 * root.pinSleepBarScale))
 						antialiasing: false
 						color: pinSleepIndicator.pinSleepInkW ? "black" : "white"
