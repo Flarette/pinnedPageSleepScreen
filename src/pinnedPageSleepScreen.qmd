@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.0
+; pinnedPageSleepScreen v0.45.1
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -122,8 +122,9 @@
 ; blends into it. The light-sleep arms (fromLight/lightPhase) are the idle
 ; discriminator. Sampled outline outcomes also plate the stock battery widget
 ; (the one element the halo ring cannot dilate) with an opposite-color
-; rectangle underneath — widget footprint incl. the bolt overshoot + halo gap
-; (docs/battery-widget/), the widget itself untouched.
+; rectangle underneath — widget footprint + halo gap, hairline-rounded ~2px
+; corners (NOT the bolt overshoot: the bolt asset outlines itself — owner
+; correction 2026-08-23), the widget itself untouched.
 ; The light-sleep banner deliberately does NOT mirror any of this (see there).
 ;
 ; Sleep-entry chapter (v0.40): a stroke written seconds before sleep missed the
@@ -155,9 +156,10 @@
 ; declaration would not compile. Pin state shows by SWAPPING the icon (empty vs
 ; filled moon — the touchLock open/closed-padlock pattern), not by a selected
 ; plate. On a cramped toolbar (showableToolsCount <= 7, the short-edge layout)
-; the button hides and a FoldoutToggle row takes over inside the stock overflow
+; the button hides and a FoldoutItem row takes over inside the stock overflow
 ; popups — SettingsMenu (portrait) / AdditionalEditingToolsMenu (landscape), the
-; same split touchLock ships. The pin write itself lives ONE place —
+; same split touchLock ships; the row swaps icon AND label with pin state and
+; long-press sleeps there too (v0.45.1). The pin write itself lives ONE place —
 ; DocumentView's pinSleepApplyPin() — because that root is the only object every
 ; caller can reach through the toolbar bus; it also takes the pin-time blind
 ; pinned.png shot (the no-chapters floor) 300ms into the chrome hold, so the
@@ -533,6 +535,21 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 			property string pinSleepPinnedPageId: ""
 			signal pinSleepToggleRequested()
 
+			// sleep now, showing this screen (v0.45.1: shared by the toolbar
+			// button's long-press and the overflow rows' — the rows live in
+			// files where Values/BatteryManager may not resolve, this root is
+			// where both provably do). Arm the one-shot flag the Navigator's
+			// transition handler reads, then the verdict-tested entry point
+			// (goToSleep() is the guarded low-level one — never call it). The
+			// PIN guard sits in that handler, the only scope where the
+			// passcode state is reachable. The flag is deliberately NOT in the
+			// Settings block: a crash mid-sleep must not leave it armed across
+			// a restart.
+			function pinSleepSleepNow() {
+				Values.pinSleepForceFreeze = Date.now();
+				BatteryManager.requestSleep();
+			}
+
 			function pinSleepOwnRects() {
 				var out = [];
 				if (!root.visible) return out;
@@ -584,12 +601,20 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 
 					visible: root.expanded && pinSleepButton.shown
 					focusPolicy: Qt.NoFocus
-					// Plate-less, the full hideShowButton template: pin state is
-					// carried by the ICON SWAP below (v0.45, the touchLock
-					// open/closed-padlock pattern), never by ark's selected state,
-					// so the black selected plate (and the v0.37 Rectangle that
-					// stood in for it) has no job left.
-					background: Item {}
+					// DEFAULT ark background kept (v0.45.1): pin state is carried
+					// by the ICON SWAP below, never by ark's selected state, and
+					// with `selected` never set the idle plate is transparent by
+					// ToolButton's own definition — so the v0.45 `background:
+					// Item {}` override only served to SHRINK the button's
+					// implicit footprint below its ToolbarTool neighbours (their
+					// token-sized background survives), which is what floated the
+					// icon a few px off the shared alignment line (owner-observed).
+					// Insets are the stock ToolbarTool inner-button pair, for the
+					// same geometry parity on top/bottom toolbars.
+					topInset: root.position === ToolbarPositioner.Position.Top
+						? -root.gestureMargin : 0
+					bottomInset: root.position === ToolbarPositioner.Position.Bottom
+						? -root.gestureMargin : 0
 					// ToolButton -> IconButton -> contentItem: Icon, i.e. ark's own
 					// loader: it opens the value as a QFile, so a bare path works and
 					// "file://" renders blank (the popup rows use the same).
@@ -612,14 +637,7 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/Toolbar.qml
 
 					onPressAndHold: {
 						pinSleepButton.pinSleepHeldAt = Date.now();
-						// sleep now, showing this screen: arm the one-shot flag the
-						// Navigator's transition handler reads, then the
-						// verdict-tested entry point (goToSleep() is the guarded
-						// low-level one — never call it). The PIN guard sits in that
-						// handler, the only scope where the passcode state is
-						// reachable.
-						Values.pinSleepForceFreeze = Date.now();
-						BatteryManager.requestSleep();
+						root.pinSleepSleepNow();
 					}
 
 					// without its own blocker the pen draws straight through the
@@ -642,38 +660,56 @@ END AFFECT
 ; split exactly: SettingsMenu when the toolbar sits portrait, the "More tools"
 ; AdditionalEditingToolsMenu when landscape. Both files already import
 ; ark.controls, and both roots are ToolbarTools whose `toolbar` reaches the
-; same bus the button uses, so the rows need no new plumbing. The control is a
-; FoldoutToggle — the owner-ruled "toggle next to the wider row label" — used
-; the way the installed penLayerMemory mod proves works on this device: tap
-; lands as `clicked` (FoldoutToggle is Button-family; the tap does NOT flip a
-; bound `checked` — penLayerMemory's live binding would have broken on first
-; use otherwise), so onClicked fires the toggle request and `checked` is a
-; pure display of pin state, bound to the bus. applyPin's optimistic
-; pinnedPageId flip moves the toggle in the same frame as the tap.
-; closeFoldout() runs AFTER the request (touchLock's order): the popup would
-; otherwise reappear over the chrome hold's release and could bake into a
-; later chapter. No long-press here — sleep-now stays a toolbar-button
-; gesture.
+; same bus the button uses, so the rows need no new plumbing. v0.45.1 owner
+; rulings replaced the v0.45 FoldoutToggle: the rows are FoldoutItems on the
+; touchLock pattern — state shown by SWAPPING icon AND label (empty moon /
+; "Set as sleep screen" vs filled moon / "Remove from sleep screen", the
+; legacy string pair), no toggle widget. closeFoldout() fires only when
+; PINNING (the fresh capture needs the clean screen; an unpin needs nothing,
+; so the menu stays open and the row flips in place — the v0.45 collapse-on-
+; disable was this call running on both directions). Long-press = sleep-now
+; here too (owner: it must not be a toolbar-button exclusive): the row closes
+; the foldout first and fires the shared pinSleepSleepNow() through a 250ms
+; timer, one render+EPD beat, so the Navigator's freeze grabs the page and
+; not the open menu — the same clicked-after-hold stamp guard as the button.
 ; ---------------------------------------------------------------------------
 AFFECT /qt/qml/xofm/libs/toolbar/qml/SettingsMenu.qml
 	TRAVERSE ToolbarTool#root > Component#settingsComponent > ColumnLayout#content
 		LOCATE AFTER ArkControls.FoldoutDivider
 		INSERT {
-			ArkControls.FoldoutToggle {
+			ArkControls.FoldoutItem {
 				id: pinSleepSettingsRow
 				objectName: "pinSleepSettingsRow"
 				Layout.fillWidth: true
-				label: qsTr("Set as sleep screen")
-				iconSource: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
+				property bool pinSleepPinned: root.toolbar.pinSleepPageId !== ""
+					&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
+				label: pinSleepSettingsRow.pinSleepPinned
+					? qsTr("Remove from sleep screen")
+					: qsTr("Set as sleep screen")
+				iconSource: pinSleepSettingsRow.pinSleepPinned
+					? "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreenPinned.svg"
+					: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
 				visible: root.toolbar.pinSleepPageId !== ""
 					&& root.toolbar.showableToolsCount <= 7
 					&& root.toolbar.toolbarPositioner.isPortraitOrientation
 
-				checked: root.toolbar.pinSleepPageId !== ""
-					&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
+				property real pinSleepHeldAt: 0
 				onClicked: {
+					if (Date.now() - pinSleepSettingsRow.pinSleepHeldAt < 1000) return;
+					var pinSleepWasPinned = pinSleepSettingsRow.pinSleepPinned;
 					root.toolbar.pinSleepToggleRequested();
+					if (!pinSleepWasPinned) root.toolbar.closeFoldout();
+				}
+				onPressAndHold: {
+					pinSleepSettingsRow.pinSleepHeldAt = Date.now();
 					root.toolbar.closeFoldout();
+					pinSleepSettingsSleepTimer.restart();
+				}
+				Timer {
+					id: pinSleepSettingsSleepTimer
+					interval: 250
+					repeat: false
+					onTriggered: root.toolbar.pinSleepSleepNow()
 				}
 			}
 
@@ -695,21 +731,39 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/AdditionalEditingToolsMenu.qml
 					visible: pinSleepMoreToolsRow.visible
 				}
 
-				ArkControls.FoldoutToggle {
+				ArkControls.FoldoutItem {
 					id: pinSleepMoreToolsRow
 					objectName: "pinSleepMoreToolsRow"
 					Layout.fillWidth: true
-					label: qsTr("Set as sleep screen")
-					iconSource: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
+					property bool pinSleepPinned: root.toolbar.pinSleepPageId !== ""
+						&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
+					label: pinSleepMoreToolsRow.pinSleepPinned
+						? qsTr("Remove from sleep screen")
+						: qsTr("Set as sleep screen")
+					iconSource: pinSleepMoreToolsRow.pinSleepPinned
+						? "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreenPinned.svg"
+						: "/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepScreen.svg"
 					visible: root.toolbar.pinSleepPageId !== ""
 						&& root.toolbar.showableToolsCount <= 7
 						&& !root.toolbar.toolbarPositioner.isPortraitOrientation
 
-					checked: root.toolbar.pinSleepPageId !== ""
-						&& root.toolbar.pinSleepPageId === root.toolbar.pinSleepPinnedPageId
+					property real pinSleepHeldAt: 0
 					onClicked: {
+						if (Date.now() - pinSleepMoreToolsRow.pinSleepHeldAt < 1000) return;
+						var pinSleepWasPinned = pinSleepMoreToolsRow.pinSleepPinned;
 						root.toolbar.pinSleepToggleRequested();
+						if (!pinSleepWasPinned) root.toolbar.closeFoldout();
+					}
+					onPressAndHold: {
+						pinSleepMoreToolsRow.pinSleepHeldAt = Date.now();
 						root.toolbar.closeFoldout();
+						pinSleepMoreToolsSleepTimer.restart();
+					}
+					Timer {
+						id: pinSleepMoreToolsSleepTimer
+						interval: 250
+						repeat: false
+						onTriggered: root.toolbar.pinSleepSleepNow()
 					}
 				}
 			}
@@ -2449,10 +2503,12 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// internals are compiled), so on the outline outcome it gets
 					// an opposite-color rectangle UNDERNEATH instead — widget
 					// footprint plus the halo gap of visible outline, the widget
-					// itself untouched. The footprint is the icon wrapper GROWN
-					// to the bolt's vertical overshoot (1.3x the % text height,
-					// see the bolt Image — the measured 78x63 in
-					// docs/battery-widget/ includes it), centered on the wrapper.
+					// itself untouched. The footprint is the icon wrapper ONLY
+					// (owner correction 2026-08-23): the charging bolt carries
+					// its own outline in the asset, so the plate must not chase
+					// its 1.3x overshoot — a bolt-tall plate read as a big
+					// square. Corners get a hairline rounding (~2px CSS-feel,
+					// owner ruling: softer than the icon's own sharp edges).
 					// Same halo color rule as the text rings: the opposite of
 					// the run ink. Declared before the rings so it paints under
 					// everything; positioned by reading the target's x/y, never
@@ -2461,13 +2517,11 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						visible: pinSleepIndicator.pinSleepHalo
 							&& pinSleepIndicatorBattRow.visible
 						property int g: pinSleepIndicator.pinSleepHaloG
-						property int ph: Math.max(pinSleepIndicatorBattIcon.height,
-							Math.round(pinSleepIndicatorBattPct.height * 1.3)) + 2 * g
 						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x - g
-						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y
-							+ Math.round((pinSleepIndicatorBattIcon.height - ph) / 2)
+						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y - g
 						width: pinSleepIndicatorBattIcon.width + 2 * g
-						height: ph
+						height: pinSleepIndicatorBattIcon.height + 2 * g
+						radius: Math.max(1, Math.round(2 * root.pinSleepBarScale))
 						antialiasing: false
 						color: pinSleepIndicator.pinSleepInkW ? "black" : "white"
 					}

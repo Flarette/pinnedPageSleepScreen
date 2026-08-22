@@ -311,6 +311,29 @@ IMPLEMENTED 2026-08-22 (undeployed; owner smoke test pending). Record:
 - Label wording "Set as sleep screen" (owner ruling; same string the legacy
   control used, no new translation surface).
 
+v0.45.1 — owner smoke-test corrections (2026-08-23, all four from the first
+on-device round; deployed):
+1. Strip icon floated a few px above the neighbours' alignment line: the
+   v0.45 `background: Item {}` override shrank the button's implicit
+   footprint below the ToolbarTool neighbours (their token-sized ark
+   background survives and sets the cell geometry). With `selected` never
+   set the override was pointless anyway — ark ToolButton's idle plate is
+   transparent by definition. Default background restored + the stock
+   ToolbarTool inner-button inset pair. RULE: never suppress an ark button
+   background for looks — it is the control's layout footprint.
+2. Popup row toggle scrapped (owner: icon didn't change, toggle wrong
+   pattern) — FoldoutItem on the full touchLock pattern: icon AND label swap
+   with pin state ("Set as sleep screen" / "Remove from sleep screen").
+3. closeFoldout() now fires only when PINNING (fresh capture needs the clean
+   screen); unpin leaves the menu open, row flips in place. The v0.45
+   collapse-on-disable was the unconditional close.
+4. Long-press sleep-now added to the rows: shared root function
+   pinSleepSleepNow() on the Toolbar bus (Values/BatteryManager provably
+   resolve in Toolbar.qml, not necessarily in the popup files); row closes
+   the foldout and sleeps through a 250ms one-shot Timer so the freeze
+   captures the page, not the open menu; same clicked-after-hold stamp guard
+   as the button.
+
 ## Closed / settled this session (do not reopen)
 
 - Default clock cadence stays 5 minutes (owner ruling, commit 1773a52).
