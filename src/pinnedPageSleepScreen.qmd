@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.7
+; pinnedPageSleepScreen v0.45.8
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -916,6 +916,15 @@ AFFECT /qml/device/view/documentview/DocumentView.qml
 					// is applied, so probe them instead of referencing them directly
 					try { if (typeof floatQuick !== "undefined") pinSleepChrome.push(out, floatQuick); } catch (e) { }
 					try { if (typeof layers !== "undefined") pinSleepChrome.push(out, layers); } catch (e) { }
+					// the stock quick-settings flyout (v0.45.8, same bug class the
+					// v0.45.7 foldout walk closed for toolbar popups — owner repro):
+					// it is a sibling WINDOW, invisible to this tree, so it
+					// publishes its own screen rect through Values while open
+					try {
+						var pinSleepQ = Values.pinSleepQuickRect;
+						if (pinSleepQ && pinSleepQ.length > 2)
+							out.push(JSON.parse(pinSleepQ));
+					} catch (e) { }
 					return out;
 				}
 
@@ -3263,6 +3272,59 @@ END AFFECT
 
 ; The cadence + style store: Values is an engine-wide singleton, so the Display
 ; panel, the Navigator re-assert and both sleep bars see the same value.
+; ---------------------------------------------------------------------------
+; Quick-settings flyout rect publisher (v0.45.8). The edge-gesture flyout is a
+; windowNavigator WINDOW ("settings/window/quicksettings") — a SIBLING of
+; DocumentView — so the chrome query cannot reach it and the chrome hold does
+; not blank it: a debounced capture with the flyout open recorded it as page
+; content (owner repro, same class as the v0.45.7 toolbar-popup gap). The
+; visible drawer is the top-right Background inside the contentItem; this
+; publisher pushes its screen rect (mapToGlobal — the fb's coordinate space)
+; into Values.pinSleepQuickRect while the window is visible and clears it on
+; hide/destruction, and the DocumentView query folds it into every capture's
+; chrome rects, so a flyout-open capture becomes an ordinary chromed chapter.
+; ---------------------------------------------------------------------------
+AFFECT /qt/qml/xofm/modules/settings/qml/QuickSettingsWindow.qml
+	TRAVERSE BaseView#root > Item:contentItem > Background
+		LOCATE AFTER ALL
+		INSERT {
+			Item {
+				id: pinSleepQuickPub
+				visible: false
+
+				function pinSleepPub() {
+					try {
+						var bg = pinSleepQuickPub.parent;
+						if (root.visible && bg.visible
+								&& bg.width > 0 && bg.height > 0) {
+							var g = bg.mapToGlobal(0, 0);
+							Values.pinSleepQuickRect = JSON.stringify({
+								"x": Math.floor(g.x), "y": Math.floor(g.y),
+								"w": Math.ceil(bg.width), "h": Math.ceil(bg.height) });
+						} else {
+							Values.pinSleepQuickRect = "";
+						}
+					} catch (e) { }
+				}
+
+				Connections {
+					target: root
+					function onVisibleChanged() { pinSleepQuickPub.pinSleepPub(); }
+				}
+				Connections {
+					target: pinSleepQuickPub.parent
+					function onWidthChanged() { pinSleepQuickPub.pinSleepPub(); }
+					function onHeightChanged() { pinSleepQuickPub.pinSleepPub(); }
+				}
+				Component.onCompleted: pinSleepQuickPub.pinSleepPub()
+				Component.onDestruction: {
+					try { Values.pinSleepQuickRect = ""; } catch (e) { }
+				}
+			}
+		}
+	END TRAVERSE
+END AFFECT
+
 AFFECT /qml/common/Values.qml
 	IMPORT QtCore 6.5
 	TRAVERSE Item
@@ -3271,6 +3333,7 @@ AFFECT /qml/common/Values.qml
 			property alias pinSleepClockCadence: pinSleepValueStore.pinSleepClockCadence
 			property alias pinSleepBarStyle: pinSleepValueStore.pinSleepBarStyle
 			property alias pinSleepForceFreeze: pinSleepValueStore.pinSleepForceFreeze
+			property alias pinSleepQuickRect: pinSleepValueStore.pinSleepQuickRect
 
 			Item {
 				id: pinSleepValueStore
@@ -3294,6 +3357,14 @@ AFFECT /qml/common/Values.qml
 				// and suspend arm the next boot's first sleep. `real`, not
 				// `int` — Date.now() overflows a 32-bit int.
 				property real pinSleepForceFreeze: 0
+				// screen rect of the OPEN quick-settings flyout as JSON, ""
+				// when closed (v0.45.8). Published by QuickSettingsWindow
+				// itself — that flyout is a windowNavigator WINDOW, a sibling
+				// of DocumentView, so neither the chrome hold nor the tree
+				// query can see it; Values is the one engine-wide bridge.
+				// Transient by design: a fresh start must never inherit a
+				// stale rect.
+				property string pinSleepQuickRect: ""
 
 				Settings {
 					category: "pinnedSleep"
