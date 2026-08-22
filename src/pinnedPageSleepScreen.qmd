@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.1
+; pinnedPageSleepScreen v0.45.2
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -292,6 +292,17 @@ AFFECT /qml/device/view/navigator/Navigator.qml
 								&& (Date.now() - pinSleepFlag) < 10000;
 							if (pinSleepFlag > 0) Values.pinSleepForceFreeze = 0;
 						} catch (e) { }
+						// permanent instrument (v0.45.2, joins the applyPower line):
+						// the v0.45.1 white-freeze incident was undiagnosable because
+						// nothing journals the Navigator's view of a transition — the
+						// window logged freeze=false and the record was gone by the
+						// time anyone looked. Flag age says whether a long-press
+						// armed this entry or leaked from an earlier one.
+						console.log("pinSleep power: " + previous + "->" + next
+							+ " forced=" + pinSleepForced
+							+ (pinSleepFlag > 0
+								? " flagAge=" + (Date.now() - pinSleepFlag) : "")
+							+ " lse=" + (Settings.lightSleepEnabled === true));
 						if (previous === 0 && next !== 0) {
 							// persist pinned chapters to eMMC in the background window after
 							// entry: tmpfs dies with a reboot, this copy is restored at the next
@@ -707,9 +718,15 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/SettingsMenu.qml
 					root.toolbar.closeFoldout();
 					pinSleepSettingsSleepTimer.restart();
 				}
+				// 700ms, not a render-frame guess: the owner's first live run
+				// (v0.45.1, 250ms) baked the fully-open menu into current.bmp —
+				// fastshot reads the FRAMEBUFFER, which only changes when the
+				// EPD compositor flushes, and a menu-sized region takes
+				// ~350-450ms (Gallery3 full-frame timing). 700 clears that with
+				// margin and still reads as "immediately".
 				Timer {
 					id: pinSleepSettingsSleepTimer
-					interval: 250
+					interval: 700
 					repeat: false
 					onTriggered: root.toolbar.pinSleepSleepNow()
 				}
@@ -761,9 +778,10 @@ AFFECT /qt/qml/xofm/libs/toolbar/qml/AdditionalEditingToolsMenu.qml
 						root.toolbar.closeFoldout();
 						pinSleepMoreToolsSleepTimer.restart();
 					}
+					// 700ms for the same fb-flush reason as the settings row
 					Timer {
 						id: pinSleepMoreToolsSleepTimer
-						interval: 250
+						interval: 700
 						repeat: false
 						onTriggered: root.toolbar.pinSleepSleepNow()
 					}
@@ -832,15 +850,16 @@ AFFECT /qml/device/view/documentview/DocumentView.qml
 				toolbar.pinSleepKick++;
 				// pin-time blind pinned.png (v0.45, was the removed page-selection
 				// control's job): the no-chapters floor shown after a reboot that
-				// beats the first persisted nap. 300ms lands inside the chrome
-				// hold just raised above — the tree hides chrome synchronously
-				// and the repaint reaches the fb in ~50-150ms — so the floor
-				// image is chrome-free, which the legacy 2s post-page-jump shot
-				// never guaranteed. rm-shot, not fastshot: this one persists on
-				// eMMC as PNG.
+				// beats the first persisted nap. 800ms lands inside the ~1.2s
+				// chrome hold just raised above but AFTER the closing overflow
+				// menu leaves the framebuffer (~350-450ms for a menu-sized EPD
+				// region — the v0.45.1 300ms shot could still catch it when the
+				// pin came from a popup row), so the floor image is chrome-free,
+				// which the legacy 2s post-page-jump shot never guaranteed.
+				// rm-shot, not fastshot: this one persists on eMMC as PNG.
 				if (!unpin)
 					pinSleepDocBroker.sendSimpleSignal("takeScreenshot",
-						"/home/root/.pinnedSleepScreen/pinned.png,300");
+						"/home/root/.pinnedSleepScreen/pinned.png,800");
 			}
 
 			Item {
@@ -1811,6 +1830,8 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						+ JSON.stringify(root.pinSleepVerdict)
 						+ " freeze=" + root.pinSleepFreeze
 						+ " pinned=" + (pinned === true)
+						+ " forced=" + (p.forced === true)
+						+ " fl=" + fromLight + " lp=" + lightPhase
 						+ " t=" + Date.now());
 					root.pinSleepDecided = true;
 					if (root.pinSleepFreeze) {
