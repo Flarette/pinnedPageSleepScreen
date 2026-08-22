@@ -115,6 +115,15 @@
 ; The latch also breaks the battery feedback edge for real (the token clone
 ; could plausibly move the stock widget's implicitWidth -> Row width -> the
 ; v0.44 sampled rect): no geometry a verdict can influence is ever sampled.
+; IDLE freeze entries force the WHITE-bar verdict without sampling (owner
+; ruling 2026-08-23): explicit entries (power button, sleep-now) freeze a
+; screen the user chose while looking at it, so see-through is safe; an idle
+; slip freezes whatever was up, and a transparent date/clock over a toolbar
+; blends into it. The light-sleep arms (fromLight/lightPhase) are the idle
+; discriminator. Sampled outline outcomes also plate the stock battery widget
+; (the one element the halo ring cannot dilate) with an opposite-color
+; rectangle underneath — widget footprint incl. the bolt overshoot + halo gap
+; (docs/battery-widget/), the widget itself untouched.
 ; The light-sleep banner deliberately does NOT mirror any of this (see there).
 ;
 ; Sleep-entry chapter (v0.40): a stroke written seconds before sleep missed the
@@ -1722,8 +1731,20 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// recheck calls: fixed rects over the same file. try/catch:
 					// a verdict failure must never take the whole decide down —
 					// null just means outline fail-safe (black ink, white halo).
+					// IDLE freeze = forced WHITE bar (owner ruling 2026-08-23): an
+					// explicit entry (power button, sleep-now long-press) shows a
+					// screen the user chose looking at it, so the see-through bar
+					// is safe; an idle slip freezes whatever happened to be up —
+					// transparent date/clock over a toolbar blends into mush. The
+					// light-sleep arms ARE the idle discriminator (idle is the
+					// only path through displayState 1); a forced whiteBar verdict
+					// renders exactly the sampled-white outcome, so nothing else
+					// changes. Pinned and button freezes still sample.
 					try {
-						root.pinSleepVerdict = pinSleepIndicator.pinSleepVerdictNow();
+						root.pinSleepVerdict = (pinSleepIndicator.pinSleepDynamic
+								&& root.pinSleepFreeze && (fromLight || lightPhase))
+							? { "whiteBar": true, "whiteInk": false }
+							: pinSleepIndicator.pinSleepVerdictNow();
 					} catch (e) {
 						// logged, not silent (v0.44.1 regression hunt): a broken
 						// verdict path must be visible in the journal
@@ -2423,6 +2444,33 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						height: 4
 						color: pinSleepIndicator.pinSleepInk
 					}
+					// Battery outline plate (v0.45.x, owner ruling 2026-08-20):
+					// the stock widget cannot take the halo-ring treatment (its
+					// internals are compiled), so on the outline outcome it gets
+					// an opposite-color rectangle UNDERNEATH instead — widget
+					// footprint plus the halo gap of visible outline, the widget
+					// itself untouched. The footprint is the icon wrapper GROWN
+					// to the bolt's vertical overshoot (1.3x the % text height,
+					// see the bolt Image — the measured 78x63 in
+					// docs/battery-widget/ includes it), centered on the wrapper.
+					// Same halo color rule as the text rings: the opposite of
+					// the run ink. Declared before the rings so it paints under
+					// everything; positioned by reading the target's x/y, never
+					// inside the Row (see the ring note below).
+					Rectangle {
+						visible: pinSleepIndicator.pinSleepHalo
+							&& pinSleepIndicatorBattRow.visible
+						property int g: pinSleepIndicator.pinSleepHaloG
+						property int ph: Math.max(pinSleepIndicatorBattIcon.height,
+							Math.round(pinSleepIndicatorBattPct.height * 1.3)) + 2 * g
+						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x - g
+						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y
+							+ Math.round((pinSleepIndicatorBattIcon.height - ph) / 2)
+						width: pinSleepIndicatorBattIcon.width + 2 * g
+						height: ph
+						antialiasing: false
+						color: pinSleepIndicator.pinSleepInkW ? "black" : "white"
+					}
 					// Opaque glyph halos (v0.43, ring reworked v0.44): 8 same-size
 					// copies of each string in a ring under its core — declared
 					// BEFORE the glyphs so painting order stacks them underneath
@@ -2542,6 +2590,7 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						// which can land after this instance completes). Not a
 						// `type` binding: it would re-clone on every token notify.
 						Item {
+							id: pinSleepIndicatorBattIcon
 							property real f: pinSleepIndicatorBattPct.height
 								/ Math.max(1, pinSleepIndicatorBattery.implicitHeight)
 							width: pinSleepIndicatorBattery.implicitWidth * f
