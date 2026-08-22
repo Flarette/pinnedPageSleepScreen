@@ -2557,10 +2557,10 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						// double on the top/right)
 						property int iw: Math.round(pinSleepIndicatorBattIcon.height * 1.46)
 						property int ih: Math.round(pinSleepIndicatorBattIcon.height * 0.66)
-						// -1px bottom / -1px whole-plate left: owner pixel-nudge
-						// round 3 (2026-08-23) off the deployed v0.45.3 frame
+						// -1px bottom / -2px whole-plate left: owner pixel-nudge
+						// rounds 3+4 (2026-08-23) off the deployed frames
 						x: pinSleepIndicatorBattRow.x + pinSleepIndicatorBattIcon.x
-							+ Math.round((pinSleepIndicatorBattIcon.width - iw) / 2) - g - 1
+							+ Math.round((pinSleepIndicatorBattIcon.width - iw) / 2) - g - 2
 						y: pinSleepIndicatorBattRow.y + pinSleepIndicatorBattIcon.y
 							+ Math.round((pinSleepIndicatorBattIcon.height - ih) / 2) - g
 						width: iw + 2 * g
@@ -2575,9 +2575,11 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// bit of outline instead of poking past the plate
 					Rectangle {
 						visible: pinSleepBattPlate.visible
-						x: pinSleepBattPlate.x + pinSleepBattPlate.width
+						// -1px left and top on its own (round 4), on top of riding
+						// the plate's shifts through the x anchor
+						x: pinSleepBattPlate.x + pinSleepBattPlate.width - 1
 						y: pinSleepBattPlate.y + Math.round((pinSleepBattPlate.height
-							- height) / 2)
+							- height) / 2) - 1
 						// -1px right and bottom: same owner nudge round as the plate
 						width: Math.round(pinSleepIndicatorBattIcon.height * 0.08)
 							+ pinSleepBattPlate.g - 1
