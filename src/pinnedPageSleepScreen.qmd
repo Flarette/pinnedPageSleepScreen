@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.9
+; pinnedPageSleepScreen v0.45.10
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -2954,6 +2954,43 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						anchors { left: parent.left; right: parent.right; top: parent.top }
 						height: 2
 						color: "black"
+					}
+					// Contacts halo (owner ruling 2026-08-23): the see-through
+					// translucent strip left this text outline-less on arbitrary
+					// pixels. Same 8-copy ring as the clock bar's glyphs, at HALF
+					// the ring gap — the contacts type is fontSizeBody1 vs the
+					// bar's 1.5-2x, so the full gap read too thicc. Ink stays
+					// black with a white ring (the bar's fail-safe arm): the
+					// bottom band is never verdict-sampled, and outlined type
+					// reads on any background. Translucent only — white/black
+					// strips are opaque.
+					property int pinSleepCHaloG: Math.max(1,
+						Math.round(pinSleepIndicator.pinSleepHaloG / 2))
+					Repeater {
+						model: Values.pinSleepBarStyle === "translucent" ? 8 : 0
+						delegate: Text {
+							required property int index
+							property int g: pinSleepContacts.pinSleepCHaloG
+							x: pinSleepContactsName.x + [-g, g, 0, 0, -g, g, -g, g][index]
+							y: pinSleepContactsName.y + [0, 0, -g, g, -g, -g, g, g][index]
+							text: pinSleepContactsName.text
+							font: pinSleepContactsName.font
+							antialiasing: false
+							color: "white"
+						}
+					}
+					Repeater {
+						model: Values.pinSleepBarStyle === "translucent" ? 8 : 0
+						delegate: Text {
+							required property int index
+							property int g: pinSleepContacts.pinSleepCHaloG
+							x: pinSleepContactsInfo.x + [-g, g, 0, 0, -g, g, -g, g][index]
+							y: pinSleepContactsInfo.y + [0, 0, -g, g, -g, -g, g, g][index]
+							text: pinSleepContactsInfo.text
+							font: pinSleepContactsInfo.font
+							antialiasing: false
+							color: "white"
+						}
 					}
 					Text {
 						id: pinSleepContactsName
