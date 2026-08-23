@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.10
+; pinnedPageSleepScreen v0.45.11
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -48,7 +48,8 @@
 ;   pinned   + off : pinned page everywhere
 ;   pinned   + on  : button -> pinned page, idle -> current screen (asymmetric)
 ;
-; Bar style (v0.36, Settings > Display > "Sleep screen style"):
+; Bar style (v0.36, Settings > Display > "Sleeper bar" — renamed + one-line
+; description, owner ruling 2026-08-23):
 ; Values.pinSleepBarStyle is "white" (v0.35 rendering: white strip, black glyphs),
 ; "black" (inverted) or "translucent". Every style binding in both bars tests
 ; `=== "black"` and never `=== "white"`: an unknown value read back from QSettings
@@ -1675,6 +1676,13 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 			// live binding did, and its white->transparent flip forced a second
 			// full EPD refresh — the ~1s flash).
 			property var pinSleepVerdict: null
+			// Contacts strip's own latched verdict (owner ruling 2026-08-23):
+			// sampled from the strip's band on the OPPOSITE edge, but only under
+			// the two text runs (name left, contact right — the middle is empty).
+			// {whiteInk} when the band is confidently dark/bright; null when
+			// ambiguous, unreadable, or not dynamic — the strip then FOLLOWS the
+			// top bar's ink. Written only by applyPower, same latch rules.
+			property var pinSleepCVerdict: null
 			// content orientation of the DISPLAYED image (0/90/180/270; journal
 			// names: Portrait/Landscape/InvertedPortrait/InvertedLandscape, with
 			// 90 = content-top at the portrait-frame RIGHT edge — BMP-verified).
@@ -1879,8 +1887,19 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						console.log("pinSleep verdict threw: " + e);
 						root.pinSleepVerdict = null;
 					}
+					// contacts strip verdict: same latch, same call, its own
+					// band. Deliberately NOT forced on idle — only the top bar
+					// goes white there, the strip stays see-through.
+					try {
+						root.pinSleepCVerdict =
+							pinSleepIndicator.pinSleepContactsVerdictNow();
+					} catch (e2) {
+						console.log("pinSleep contacts verdict threw: " + e2);
+						root.pinSleepCVerdict = null;
+					}
 					console.log("pinSleep applyPower: verdict="
 						+ JSON.stringify(root.pinSleepVerdict)
+						+ " cverdict=" + JSON.stringify(root.pinSleepCVerdict)
 						+ " freeze=" + root.pinSleepFreeze
 						+ " pinned=" + (pinned === true)
 						+ " forced=" + (p.forced === true)
@@ -2445,6 +2464,46 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						return { "whiteBar": false,
 							"whiteInk": dark * 2 >= cells.length };
 					}
+					// Contacts strip verdict (owner ruling 2026-08-23): sample
+					// the strip's OWN band — the OPPOSITE edge from the clock
+					// bar's (see pinSleepContactsCover for the edge mapping) —
+					// but vote only the cells UNDER the two text runs (fx <=
+					// .28 / >= .72; the justified middle is empty and its
+					// pixels never sit behind ink). Confidence gate: >=70%
+					// dark cells = white ink, <=30% = black ink, anything in
+					// between (or unreadable) = null and the strip follows the
+					// top bar's ink. Same fixed-geometry latch rules as
+					// pinSleepVerdictNow: only strip height + orient are read.
+					function pinSleepContactsVerdictNow() {
+						if (!pinSleepDynamic) return null;
+						var f = root.pinSleepFreeze;
+						if (!f && !root.pinSleepPinnedLikely) return null;
+						var img = f ? "/tmp/pinnedSleep/current.bmp"
+							: "/tmp/pinnedSleep/ch0.bmp";
+						var o = root.pinSleepOrient;
+						var h = Math.round(pinSleepContacts.height);
+						if (h <= 0) return null;
+						// contacts edge: content-BOTTOM — orient 0 bottom /
+						// 90 left / 180 top / 270 right in the BMP's frame
+						var band = o === 90 ? [0, 0, h, 999999]
+							: (o === 180 ? [0, 0, 999999, h]
+							: (o === 270 ? [-h, 0, h, 999999]
+							: [0, -h, 999999, h]));
+						var cells = pinSleepLumaCells(img, band,
+							o === 90 || o === 270, 24, 2, 8);
+						if (!cells) return null;
+						var dark = 0, n = 0;
+						for (var i = 0; i < cells.length; i++) {
+							var fx = ((i % 24) + 0.5) / 24;
+							if (fx > 0.28 && fx < 0.72) continue;
+							n++;
+							if (cells[i].l < 128) dark++;
+						}
+						if (n === 0) return null;
+						if (dark * 10 >= n * 7) return { "whiteInk": true };
+						if (dark * 10 <= n * 3) return { "whiteInk": false };
+						return null;
+					}
 					// physical-frame rect -> cell lumas in BAR-LOCAL order.
 					// `rot` = the strip is rotated 90/270, so the bar's LONG
 					// axis is the image's Y: the grid is requested transposed
@@ -2927,8 +2986,17 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					property color pinSleepCPaper: Values.pinSleepBarStyle === "black"
 						? "black" : (Values.pinSleepBarStyle === "translucent"
 							? "transparent" : "white")
-					property color pinSleepCInk: Values.pinSleepBarStyle === "black"
-						? "white" : "black"
+					// translucent ink polarity (owner ruling 2026-08-23): the
+					// strip's own latched band verdict when it is CONFIDENT
+					// (pinSleepCVerdict non-null), the top bar's ink otherwise —
+					// a black page under a black strip text was unreadable when
+					// the ink was hardwired black
+					property bool pinSleepCInkW: Values.pinSleepBarStyle === "black"
+						|| (Values.pinSleepBarStyle === "translucent"
+							&& (root.pinSleepCVerdict !== null
+								? root.pinSleepCVerdict.whiteInk === true
+								: pinSleepIndicator.pinSleepInkW))
+					property color pinSleepCInk: pinSleepCInkW ? "white" : "black"
 					color: pinSleepCPaper
 					// +18/-3: taller bar biased downward — descenders (g j y)
 					// were touching the screen edge at +8 centered
@@ -2959,10 +3027,9 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// translucent strip left this text outline-less on arbitrary
 					// pixels. Same 8-copy ring as the clock bar's glyphs, at HALF
 					// the ring gap — the contacts type is fontSizeBody1 vs the
-					// bar's 1.5-2x, so the full gap read too thicc. Ink stays
-					// black with a white ring (the bar's fail-safe arm): the
-					// bottom band is never verdict-sampled, and outlined type
-					// reads on any background. Translucent only — white/black
+					// bar's 1.5-2x, so the full gap read too thicc. Ring color =
+					// the ink's OPPOSITE, ink from pinSleepCInkW above (own band
+					// verdict, top-bar fallback). Translucent only — white/black
 					// strips are opaque.
 					property int pinSleepCHaloG: Math.max(1,
 						Math.round(pinSleepIndicator.pinSleepHaloG / 2))
@@ -2976,7 +3043,7 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 							text: pinSleepContactsName.text
 							font: pinSleepContactsName.font
 							antialiasing: false
-							color: "white"
+							color: pinSleepContacts.pinSleepCInkW ? "black" : "white"
 						}
 					}
 					Repeater {
@@ -2989,7 +3056,7 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 							text: pinSleepContactsInfo.text
 							font: pinSleepContactsInfo.font
 							antialiasing: false
-							color: "white"
+							color: pinSleepContacts.pinSleepCInkW ? "black" : "white"
 						}
 					}
 					Text {
@@ -3436,7 +3503,7 @@ END AFFECT
 ; where the old four-option row overflowed. Panels must LOCATE BEFORE
 ; Repeater — a ColumnLayout child placed after it collides with the
 ; Repeater's re-inserted delegates.
-; Display > "Sleep screen style" follows in the same insert: the strip's
+; Display > "Sleeper bar" follows in the same insert: the strip's
 ; white/black/translucent radio plus the translucent sub-style radio.
 AFFECT /qml/device/view/settings/Display.qml
 	IMPORT net.asivery.CommandExecutor 1.0
@@ -3513,10 +3580,10 @@ AFFECT /qml/device/view/settings/Display.qml
 			ArkControls.Panel {
 				id: pinSleepStylePanel
 				Layout.fillWidth: true
-				label: qsTr("Sleep screen style")
+				label: qsTr("Sleeper bar")
 				// tier-3 radio (full/outline/cascading) retired in v0.44 —
 				// translucent is always dynamic now (see the header)
-				description: qsTr("The strip on the sleep screen. Translucent adapts to the picture: a white bar over mostly-white pages, outlined text over anything else.")
+				description: qsTr("The bar on the sleep screen.")
 
 				showAttachment: true
 				attachment: ColumnLayout {
