@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.11
+; pinnedPageSleepScreen v0.46.0
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -2284,9 +2284,15 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 				// trips the second pass, so it keeps true transparency.
 				Item {
 					id: pinSleepBandCover
+					// v0.46: also armed when the Sleep bar is toggled OFF — with
+					// no opaque bar the top band would otherwise be uncovered on
+					// EVERY freeze style and the structural second-refresh flash
+					// (v0.44.3) would return. The cover is the capture's own
+					// pixels, so it is invisible either way.
 					visible: root.pinSleepDecided && root.pinSleepFreeze
 						&& root.pinSleepPath !== ""
-						&& Values.pinSleepBarStyle === "translucent"
+						&& (Values.pinSleepBarStyle === "translucent"
+							|| Values.pinSleepBarEnabled === false)
 					clip: true
 					property int bh: Math.round(pinSleepIndicator.height)
 					x: root.pinSleepOrient === 90 ? parent.width - bh : 0
@@ -2309,8 +2315,9 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 				Rectangle {
 					id: pinSleepIndicator
 					// on every deep-sleep screen since v0.26 — stock carousel included
-					// (the old mod-owned-image gate was why carousel naps had no bar)
-					visible: true
+					// (the old mod-owned-image gate was why carousel naps had no bar).
+					// v0.46: unless the Sleep bar toggle is off
+					visible: Values.pinSleepBarEnabled !== false
 					// Style ink/paper (Values.pinSleepBarStyle, WP4a). EVERY test
 					// is `=== "black"`, never `=== "white"`: an unknown value read
 					// back from QSettings must degrade to the white bar, and
@@ -3191,6 +3198,8 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/SleepWindowBannerWindow.qml
 				property color pinSleepInk: Values.pinSleepBarStyle === "black"
 					? "white" : "black"
 				color: pinSleepPaper
+				// v0.46: the Sleep bar toggle silences this light-sleep copy too
+				visible: Values.pinSleepBarEnabled !== false
 				height: pinSleepBannerTime.height + 17
 
 				// same locale-aware formats as the deep-sleep bar
@@ -3452,6 +3461,7 @@ AFFECT /qml/common/Values.qml
 		INSERT {
 			property alias pinSleepClockCadence: pinSleepValueStore.pinSleepClockCadence
 			property alias pinSleepBarStyle: pinSleepValueStore.pinSleepBarStyle
+			property alias pinSleepBarEnabled: pinSleepValueStore.pinSleepBarEnabled
 			property alias pinSleepForceFreeze: pinSleepValueStore.pinSleepForceFreeze
 			property alias pinSleepQuickRect: pinSleepValueStore.pinSleepQuickRect
 
@@ -3470,6 +3480,10 @@ AFFECT /qml/common/Values.qml
 				// literals. An unknown value read back from QSettings
 				// therefore degrades to the white bar, never to a blank one.
 				property string pinSleepBarStyle: "white"
+				// master switch for the sleep bar (v0.46, Settings > Display >
+				// "Sleep bar" toggle): off = neither the deep-sleep bar nor its
+				// light-sleep banner copy renders at all
+				property bool pinSleepBarEnabled: true
 				// one-shot arming stamp for the toolbar's long-press "sleep now
 				// with this screen" (Date.now() at press; the Navigator clears
 				// it at the next transition). DELIBERATELY NOT in the Settings
@@ -3490,6 +3504,7 @@ AFFECT /qml/common/Values.qml
 					category: "pinnedSleep"
 					property alias pinSleepClockCadence: pinSleepValueStore.pinSleepClockCadence
 					property alias pinSleepBarStyle: pinSleepValueStore.pinSleepBarStyle
+					property alias pinSleepBarEnabled: pinSleepValueStore.pinSleepBarEnabled
 				}
 			}
 		}
@@ -3503,18 +3518,85 @@ END AFFECT
 ; where the old four-option row overflowed. Panels must LOCATE BEFORE
 ; Repeater — a ColumnLayout child placed after it collides with the
 ; Repeater's re-inserted delegates.
-; Display > "Sleeper bar" follows in the same insert: the strip's
-; white/black/translucent radio plus the translucent sub-style radio.
+; Display > "Sleep bar" LEADS in the same insert (v0.46, owner ruling
+; 2026-08-23: bar above clock): panel toggle (off = no bar anywhere, deep or
+; light) + the white/black/transparent radio while on. The Sleep clock panel
+; follows and shows only while the bar is enabled AND the companion's timer
+; unit exists — without the companion the clock is dead weight and the panel
+; now hides entirely (fastRead through the broker, the deep window's own
+; existence test; broker absent/old = hidden, fail closed).
 AFFECT /qml/device/view/settings/Display.qml
 	IMPORT net.asivery.CommandExecutor 1.0
+	IMPORT net.asivery.XoviMessageBroker 2.0
 	TRAVERSE DeviceKeyboardNavigationHandler#root > ScrollArea#flickable > Item#itemWrapper > ColumnLayout#column
 		LOCATE BEFORE Repeater
 		INSERT {
+			XoviMessageBroker {
+				id: pinSleepSettingsBroker
+			}
+
+			ArkControls.Panel {
+				id: pinSleepStylePanel
+				Layout.fillWidth: true
+				label: qsTr("Sleep bar")
+				description: qsTr("The bar on the sleep screen.")
+
+				action: ArkToggleWrapper {
+					checked: Values.pinSleepBarEnabled !== false
+					extendedMouseArea.onPressed:
+						Values.pinSleepBarEnabled = !(Values.pinSleepBarEnabled !== false)
+				}
+
+				// Style picker as a ContextualMenu button row — the SAME square
+				// native control the Sleep clock cadence menu uses (owner
+				// ruling 2026-08-19, v0.42: ArkControls.Selector rendered as a
+				// round web-style radio). `selected` is driven straight off the
+				// stored value, so no autoExclusive grouping to juggle.
+				// "Transparent" is the third option's LABEL (owner rename
+				// 2026-08-23); the stored value stays "translucent" so every
+				// existing ini keeps meaning what it meant.
+				showAttachment: Values.pinSleepBarEnabled !== false
+				attachment: ColumnLayout {
+					Layout.fillWidth: true
+					spacing: ArkControls.Values.spacing.large
+
+					ArkControls.ContextualMenu {
+						// full column width like the cadence menu — without it
+						// the row shrinks to its contents (owner note 2026-08-20)
+						Layout.fillWidth: true
+						uniformSize: true
+						Repeater {
+							model: [ "white", "black", "translucent" ]
+							delegate: ArkControls.ContextualMenu.Button {
+								required property string modelData
+								objectName: "pinSleepStyle_" + modelData
+								text: modelData === "white" ? qsTr("White")
+									: (modelData === "black" ? qsTr("Black")
+									: qsTr("Transparent"))
+								selected: Values.pinSleepBarStyle === modelData
+								onClicked: Values.pinSleepBarStyle = modelData
+							}
+						}
+					}
+				}
+			}
+
+			// Second panel in the SAME insert (one AFFECT per file per qmd).
 			ArkControls.Panel {
 				id: pinSleepClockPanel
 				Layout.fillWidth: true
 				label: qsTr("Sleep clock")
 				description: qsTr("Keep the time visible in standby.")
+				// companion gate evaluated once per settings-page build: the
+				// timer unit IS the companion's install marker (same test the
+				// deep window uses for pinSleepHasClock). Non-empty non-"failed"
+				// reply = present; no fastshot = hidden, fail closed.
+				property bool pinSleepClockUnit: {
+					var r = "" + pinSleepSettingsBroker.sendSimpleSignal(
+						"fastRead", "/etc/systemd/system/pinsleep-clock.timer");
+					return r !== "" && r.indexOf("failed") !== 0;
+				}
+				visible: pinSleepClockUnit && Values.pinSleepBarEnabled !== false
 
 				CommandExecutor {
 					id: pinSleepClockCmd
@@ -3565,47 +3647,6 @@ AFFECT /qml/device/view/settings/Display.qml
 								: qsTr("15 minutes"))
 							selected: Values.pinSleepClockCadence === modelData
 							onClicked: pinSleepClockPanel.apply(modelData)
-						}
-					}
-				}
-			}
-
-			// Style pickers as ContextualMenu button rows — the SAME square
-			// native control the Sleep clock cadence menu above uses (owner
-			// ruling 2026-08-19, v0.42: ArkControls.Selector rendered as a
-			// round web-style radio). `selected` is driven straight off the
-			// stored value, so no autoExclusive grouping to juggle.
-			// Second panel in the SAME insert (one AFFECT per file per qmd);
-			// which of the mod panels lands first follows exthome load order.
-			ArkControls.Panel {
-				id: pinSleepStylePanel
-				Layout.fillWidth: true
-				label: qsTr("Sleeper bar")
-				// tier-3 radio (full/outline/cascading) retired in v0.44 —
-				// translucent is always dynamic now (see the header)
-				description: qsTr("The bar on the sleep screen.")
-
-				showAttachment: true
-				attachment: ColumnLayout {
-					Layout.fillWidth: true
-					spacing: ArkControls.Values.spacing.large
-
-					ArkControls.ContextualMenu {
-						// full column width like the cadence menu above — without
-						// it the row shrinks to its contents (owner note 2026-08-20)
-						Layout.fillWidth: true
-						uniformSize: true
-						Repeater {
-							model: [ "white", "black", "translucent" ]
-							delegate: ArkControls.ContextualMenu.Button {
-								required property string modelData
-								objectName: "pinSleepStyle_" + modelData
-								text: modelData === "white" ? qsTr("White")
-									: (modelData === "black" ? qsTr("Black")
-									: qsTr("Translucent"))
-								selected: Values.pinSleepBarStyle === modelData
-								onClicked: Values.pinSleepBarStyle = modelData
-							}
 						}
 					}
 				}
