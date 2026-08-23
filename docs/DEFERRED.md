@@ -173,6 +173,8 @@ One line per finding, appended by WP agents. Findings only — never fixes.
   the freeze image made the v0.40 fresh-strokes smoke test look like a pass.
 
 - 2026-08-19 (v0.41): transient-chrome capture gap (more-tools popup / edge quick-settings baked into chapters) SPLIT OUT of v0.41 per the fix-wave plan allowance — closing it needs device object-tree probing to find the popup/overlay items (they are not children of the toolbar GridLayout that pinSleepOwnRects enumerates); the two P1 sleep-entry fixes shipped without it.
+  DONE 2026-08-23 (v0.45.7 open foldouts + v0.45.8 quick-settings flyout join
+  the chrome rects).
 
 - 2026-08-20 (v0.44): light->deep freeze clobber — the awake->light entry writes a good
   captured:true record, but the later 1->2 transition takes the generic
@@ -212,6 +214,11 @@ One line per finding, appended by WP agents. Findings only — never fixes.
   in docs/battery-widget/. Contacts-strip text outline rides the same
   stylistic round. Post-compaction work — needs no flash-hunt context beyond
   what fix-wave-plan.md's v0.44.2–v0.44.4 section records.
+  DONE 2026-08-23 (v0.45.1–v0.45.11): plate shipped and pixel-tuned to the
+  widget's measured INK (main plate + terminal-nub plate, ~2px rounded,
+  four owner photo rounds); contacts strip got the half-gap halo ring AND its
+  own latched band verdict (confident dark/bright = own ink, ambiguous =
+  follows the top bar) in fc24157.
 
 - 2026-08-20 (v0.44.5 hunt bycatch): the LIGHT-sleep banner window had failed to load on
   EVERY light entry since the v0.42.1 token-clone round — qmldiff's IMPORT grammar is
