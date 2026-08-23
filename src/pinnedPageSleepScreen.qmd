@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.45.8
+; pinnedPageSleepScreen v0.45.9
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -1971,6 +1971,22 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						pinSleepGate.decide(pinned, bookOrient);
 					else
 						pinSleepGate.applyPower(powerText, pinned, bookOrient);
+					// FREEZE WINS THE WHOLE NAP (v0.45.9, root cause of every
+					// white forced-freeze-while-pinned): applyPower above just
+					// set pinSleepPath to the frozen shot, but the chapter
+					// branches below then CLOBBERED it — "" when chapters are
+					// available (model populated yet hidden by the freeze
+					// gate -> nothing painted but the white backing), or the
+					// stale pinned.png when they are not. Freeze+unpinned
+					// never reached them, which is why only the
+					// long-press-on-a-pinned-page combination failed. The
+					// freeze image needs no model; mid-nap swaps are already
+					// forbidden by the check() invariant.
+					if (root.pinSleepFreeze === true) {
+						root.pinSleepModel = [];
+						root.pinSleepProbeSrc = "";
+						return;
+					}
 					if (!pinned) { // unpinned, unreadable, or chapters lost to reboot
 						root.pinSleepModel = [];
 						root.pinSleepProbeSrc = "";
