@@ -1,0 +1,6 @@
+[Unit]
+Description=Temperature sensor sample
+
+[Service]
+Type=oneshot
+ExecStart=/home/root/templog/templog.sh timer

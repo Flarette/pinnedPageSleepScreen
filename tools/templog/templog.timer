@@ -1,0 +1,12 @@
+[Unit]
+Description=Temperature sample every 5 min (rides pinsleep-clock RTC wakes)
+
+[Timer]
+OnCalendar=*:00/5
+AccuracySec=10s
+# WakeSystem deliberately absent: pinsleep-clock.timer already wakes the
+# system every 5 min; this timer fires in that window (elapsed-during-suspend
+# timers fire at resume) and on its own while awake.
+
+[Install]
+WantedBy=timers.target

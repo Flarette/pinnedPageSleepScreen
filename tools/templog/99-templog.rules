@@ -1,0 +1,2 @@
+# Log a temperature sample on charger plug/unplug (immediate, not 5-min quantized)
+SUBSYSTEM=="power_supply", KERNEL=="max77818-charger", RUN+="/home/root/templog/templog.sh udev-charger"
