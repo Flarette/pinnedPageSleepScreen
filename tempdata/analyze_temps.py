@@ -890,7 +890,7 @@ aft = lambda cf: 12 <= loc(cf['ep']['end']).hour <= 17
 print(f'Board fits (τ inside grid): {len(cool_fits)}; slow (τ > {SLOW_TAU} min): {len(slow)}, of which '
       f'{sum(aft(cf) for cf in slow)} end 12–17 h local; fast windows ending 12–17 h: '
       f'{sum(aft(cf) for cf in cool_fits if cf not in slow)} of {len(cool_fits) - len(slow)}. '
-      f'Fits with A < 0 (device colder than its later floor, i.e. moved from a cooler place): '
+      f'Fits with A < 0 (device colder than its later floor, i.e. ambient rose during the window): '
       f'{sum(cf["fit"]["A"] < 0 for cf in cool_fits)}.')
 fast_fits = [cf for cf in cool_fits if cf['fit']['tau'] <= SLOW_TAU and cf['fit']['A'] > 0]
 print('Fast windows only (τ <= 60 min, A > 0), board: '
