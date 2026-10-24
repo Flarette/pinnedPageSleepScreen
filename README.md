@@ -96,12 +96,7 @@ pinned-page-sleep-screen` removes the mod, but not your saved sleep images
 The bar follows the device locale and timezone, and the stock UI can change
 **neither** (factory setting is `en_US` — 12-hour clock, MM/DD dates — and
 the device runs UTC; the stock interface simply never shows you a clock).
-The easy route is the companion **timezone-locale-picker** mod
-(`vellum add timezone-locale-picker`): both settings appear in
-**Settings → Display**, persist across reboots (the mod re-asserts them at
-every start), and never touch the real rootfs.
-
-Without that mod, over SSH: `timedatectl set-timezone Europe/London` (any
+Set both over SSH: `timedatectl set-timezone Europe/London` (any
 `Region/City` from `timedatectl list-timezones`) works immediately but
 silently reverts to UTC on the next reboot — `/etc` on this OS is a
 RAM-backed overlay. Making it stick means writing the real rootfs through
@@ -252,8 +247,8 @@ capture disproved, and carries a dated erratum saying so.
   variants of that mod remove the same stock `ArkControls.ActionBar` node
   this mod removes, so the two cannot compose — whichever loads second
   fails to apply its diff. This mod supersedes it; remove mini-light-sleep
-  first. Nothing
-  enforces this yet — vellum will not stop you from installing both.
+  first. The main package declares the conflict (`!mini-light-sleep`), so
+  vellum refuses to install the two together.
 - qmd hashes target OS 3.27 QML; the packages pin
   `remarkable-os>=3.27 <3.28`.
 - `fastshot` derives geometry (width/height/stride) from framebuffer-spy at

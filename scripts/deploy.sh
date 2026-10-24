@@ -47,7 +47,8 @@ echo "fastshot built: $FSVER"
 
 scp -q src/pinnedPageSleepScreen.qmd src/hideSidebarGuides.qmd "$DEV:$EXTHOME/"
 # timezoneLocalePicker v0.1.0 scrapped (owner ruling 2026-08-20: wrong Settings
-# section, wrong controls — rebuild from scratch later). Idempotent removal so
+# section, wrong controls; 2026-10-24: no rebuild, timezone and locale stay
+# terminal-settable, see README). Idempotent removal so
 # any device that got the v0.1.0 wave is cleaned by its next deploy.
 ssh "$DEV" "rm -f $EXTHOME/timezoneLocalePicker.qmd"
 scp -q assets/pinnedSleepScreen.svg "$DEV:$EXTHOME/pinnedSleepScreen.svg"
@@ -104,10 +105,9 @@ systemctl daemon-reload
 systemctl try-restart pinsleep-clock.timer 2>/dev/null || true
 # /etc is volatile: a reboot silently reverts the timezone to UTC
 # (user-visible as a 3h-slow clock). The timezone mod that owned this was
-# scrapped (2026-08-20), so the deploy fallback is back in charge until its
-# rebuild lands; the [ -e ] guard stays so the rebuild takes over silently.
-[ -e /home/root/xovi/exthome/qt-resource-rebuilder/timezoneLocalePicker.qmd ] \
-    || timedatectl set-timezone Europe/Kyiv 2>/dev/null || true'
+# scrapped (2026-08-20) and will not be rebuilt (2026-10-24), so this deploy
+# re-assert owns the dev tablet's timezone.
+timedatectl set-timezone Europe/Kyiv 2>/dev/null || true'
 
 ssh "$DEV" '
 # systemd allows 4 xochitl starts per 10min (StartLimitBurst); exceeding it
