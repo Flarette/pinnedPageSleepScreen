@@ -66,7 +66,17 @@ terminal-settable (README SSH recipe); no picker mod.
   (main first; the clock depends on it), description written by the
   owner. Upstream closes PRs whose description an LLM wrote and wants
   human-authored commits. `README.md`'s `vellum add` install route works
-  only once these are published.
+  only once these are published. Documented flow (vellum README): PR to
+  main, CI lints and builds, maintainers publish to the testing repo, the
+  owner tests with `vellum testing enable` + `vellum add <pkg>@testing`,
+  then comments `/ready-for-review`.
+- **Readable qmd vs hashed convention** — vellum never hashes .qmd files
+  (no recipe runs qmldiff); hashing is the author's step. The
+  qt-resource-rebuilder README says community qmds are qmldiff-hashed "by
+  design", and all 14 sampled upstream qmd sources are. Ours ships
+  readable; it applies fine (vellum-installed on the tablet), but reviewers
+  may ask for a hashed copy: `qmldiff hash-diffs <hashtab> <qmd>`, retest
+  on the tablet, ship it as a release asset, bump `pkgrel`.
 
 ## Closed 2026-10-24
 
