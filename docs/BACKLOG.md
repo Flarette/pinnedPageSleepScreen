@@ -11,23 +11,34 @@ terminal-settable (README SSH recipe); no picker mod.
 
 ## Release (in progress)
 
-- **Build environment** — the gitignored `research/` tree and the zig and
-  Rust toolchains were gone from the dev Mac. Restored 2026-10-25: zig
-  0.17.0 and Rust stable via Homebrew/rustup, `research/qmldiff` at
-  25681c3 (the submodule pin of xovi-extensions v19-23052026, the
-  device's qt-resource-rebuilder 19.0.0), `research/xovi` at v0.3.3;
-  fastshot builds and embeds 0.11.0. Still missing: `research/device-qml`
-  and `research/preflight` (need the tablet: xochitl binary, installed
-  qmds, hashtab).
-- **Packaging round** — `scripts/package.sh` across all packages. Release
-  is v0.46.1: v0.46.0 plus the error page's issues link moved from the
-  renamed YanGeruch account to Flarette (GitHub frees renamed names, so
-  the redirect is not permanent). fastshot.so rebuilt with zig 0.17 —
-  needs its on-device load check.
-- **vellum install/uninstall round-trip** — never run against the current
-  recipes: the device's vellum DB still says 0.31.2 and every version since
-  arrived through `deploy.sh`. Upgrade, `vellum del` both, check the stock
-  hook is back and other mods still load, `vellum add` again.
+- **Build environment** — DONE 2026-10-25. zig 0.17.0 and Rust stable
+  (Homebrew/rustup); `research/qmldiff` at 25681c3 (the submodule pin of
+  xovi-extensions v19-23052026 = the device's qt-resource-rebuilder
+  19.0.0); `research/xovi` at v0.3.3; `research/device-qml` re-extracted
+  (41 files; SceneSelectionHandler now extracts, homescreen CreateMenu
+  still does not); `research/preflight` = 27 other installed qmds
+  de-hashed one by one, dockButtons' homescreen CreateMenu block stripped.
+- **Packaging round** — DONE 2026-10-25, v0.46.1 DEPLOYED via
+  `package.sh` (vellum 0.31.2 → 0.46.1, loaded:1 breakage:0). v0.46.1 =
+  v0.46.0 plus the error page's issues link moved from the renamed
+  YanGeruch account to Flarette. fastshot rebuilt with zig 0.17
+  (reproducible: two clean builds, same md5); the tested ELF is kept at
+  `dist/release/v0.46.1/fastshot-aarch64.so`. Injected button sleep:
+  `captured:true`, current.bmp written, bar shows date, clock, bolt and
+  battery %. Still open: open a PDF once (extensions also load in the
+  PDF renderer).
+- **vellum round-trip** — DONE 2026-10-25: upgrade, `vellum del` both
+  (stock `sleep-wifi.sh` restored byte-identical, zz hook, units and mod
+  files gone, vpdd back to 30000, xovi drop-in intact; restart = 28 other
+  mods load, ours not), fresh `vellum add`, del + add again, restart:
+  loaded, timer re-armed at 5 min. Found and fixed: uninstall left the
+  volatile `pinsleep-clock.timer.d/cadence.conf` the mod writes at start.
+- **w4clamp not packaged** — the dev tablet runs the hand-installed
+  w4clamp.so + rootfs drop-in `50-pinsleep-clamp.conf` (2995ac7,
+  2026-08-16: 34s re-suspend window clamped to 3s), so the two-month soak
+  and its 0.43–0.57 %/h drain include it. The packages do not ship it;
+  released users get the README's 34s-window numbers (~0.9 %/h at 5 min).
+  Owner decision: ship as is, or package the clamp.
 - **OS target** — 3.27 only (owner ruling 2026-10-25); 3.28/3.29 ports
   are left to the community.
 - **Publish** — recipes are in upstream format (maintainer, `source=`

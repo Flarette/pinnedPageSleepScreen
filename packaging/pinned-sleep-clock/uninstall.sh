@@ -19,6 +19,8 @@ rm -f /etc/systemd/system/pinsleep-clock.service \
 rm -f /var/volatile/etc/systemd/system/pinsleep-clock.service \
       /var/volatile/etc/systemd/system/pinsleep-clock.timer \
       /var/volatile/etc/systemd/system/timers.target.wants/pinsleep-clock.timer
+# cadence drop-in the running mod rewrites at every xochitl start
+rm -rf /var/volatile/etc/systemd/system/pinsleep-clock.timer.d
 [ "$VELLUM_PURGE" = "1" ] && rm -f "$STOCK_BACKUP"
 /home/root/.vellum/bin/mount-restore
 # Re-establish xovi's LD_PRELOAD drop-in tmpfs mounts that mount-rw's
