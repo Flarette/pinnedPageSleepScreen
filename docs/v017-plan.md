@@ -34,7 +34,7 @@ recheck; F1 kick; pinned/idle cells unchanged. Expected button UX: one native-st
 refresh storm → current screen + pill.
 
 **Open follow-ups (user is weighing tradeoffs):**
-- Delayed-shot probe RAN (probeDelayedShot.qmd, 313c35d, removed): **NEGATIVE**. At
+- Delayed-shot probe RAN (probeDelayedShot.qmd, 1f89135, removed): **NEGATIVE**. At
   0→2 the sleep surface owns the fb in <150ms (150/300/500ms shots all pure white,
   two runs: home + document-with-toolbar); the app never repaints chrome-less. Only
   the delay-0 grab holds the screen (with chrome). Chrome-less at 0→2 via fb capture
@@ -59,7 +59,7 @@ refresh storm → current screen + pill.
   (Half-measure noted: mask entry-shot chrome rects with ThumbnailProvider patches —
   per-page, chrome-free, but 512px upscale is blurry; only touches chrome rects.)
 
-User test results (device on v0.16.2, git 7df4ccb):
+User test results (device on v0.16.2, git cd954dd):
 
 | Case | Result |
 |---|---|

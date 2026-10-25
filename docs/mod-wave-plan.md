@@ -414,11 +414,11 @@ Agents append one-liners to `docs/DEFERRED.md` (create if missing).
 
 # Audit remediation wave (v0.39.0)
 
-Source: `audit/main-db2cc08/REPORT.md` (adversarial audit; note it labels
-itself `db2cc08` but actually read the post-wave tree). Orchestrator verified
+Source: `audit/main-0f329b5/REPORT.md` (adversarial audit; note it labels
+itself `0f329b5` but actually read the post-wave tree). Orchestrator verified
 every finding below against the code before authoring these entries. Findings
 NOT listed here were disproved or deferred — see
-`audit/main-db2cc08/DISPOSITION.md`, which is the authoritative status list and
+`audit/main-0f329b5/DISPOSITION.md`, which is the authoritative status list and
 must stay in sync with what these WPs land.
 
 ## WP8 — audit code fixes (qmd + fastshot 0.7.0)

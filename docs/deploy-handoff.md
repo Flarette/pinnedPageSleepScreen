@@ -151,7 +151,7 @@ pinned page with the bar. Then the version-specific check:
 
 The remaining work is in `docs/DEFERRED.md` (packaging gaps: VELBUILD pkgver
 still 0.31.2, asset staging, the `!mini-light-sleep` conflict, no purge hook)
-and in `audit/main-db2cc08/DISPOSITION.md` (audit findings scheduled for the
+and in `audit/main-0f329b5/DISPOSITION.md` (audit findings scheduled for the
 deploy round, including one cheap on-device check: capture `apk info -a` for
 the virtual packages to settle whether the recipes should say `rmppmove` or
 `rmppm` — do not change the recipes without that output, three non-forced
@@ -165,7 +165,7 @@ also needs the version single-sourced, which is separate work.
 - `docs/mod-wave-plan.md` — the plan every change was built against, including
   dated errata with the design rulings.
 - `docs/DEFERRED.md` — 20+ findings, each tagged with the task that owns it.
-- `audit/main-db2cc08/DISPOSITION.md` — status of an external adversarial audit.
+- `audit/main-0f329b5/DISPOSITION.md` — status of an external adversarial audit.
 - `w5data/analysis.md` — the battery certification behind the vpdd change.
 
 Ask the user before anything destructive or anything the notes above flag as a

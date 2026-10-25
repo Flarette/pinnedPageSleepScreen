@@ -21,7 +21,7 @@ another session may be running a staged deploy (`docs/deploy-handoff.md`).
 
 Read first, in this order:
 - `docs/DEFERRED.md` — 22 findings, each tagged with the task that owns it.
-- `audit/main-db2cc08/DISPOSITION.md` — status of an external adversarial
+- `audit/main-0f329b5/DISPOSITION.md` — status of an external adversarial
   audit (7 resolved, 1 disproved, 3 partial, 8 deferred here).
 - `docs/mod-wave-plan.md` — the conventions register and the dated errata that
   record every design ruling. Its Protocol section governs how you work.
@@ -192,4 +192,4 @@ clean. Never `git add -A` — `audit/`, `w5data/`, `ghostdata/` are untracked or
 ignored and must stay that way.
 
 When you finish an item, mark it in `docs/DEFERRED.md` and, if it came from the
-audit, update `audit/main-db2cc08/DISPOSITION.md` so the two stay in sync.
+audit, update `audit/main-0f329b5/DISPOSITION.md` so the two stay in sync.

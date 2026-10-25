@@ -121,7 +121,7 @@ opaque white outlines.
 
 Findings from the smoke test investigation (2026-08-20):
 - The "old placeholder" battery on translucent was the v0.36.0 mod-drawn twin
-  (commit 3a7bfec), which v0.42.1 deliberately kept for island styles — wrong
+  (commit 4efa66b), which v0.42.1 deliberately kept for island styles — wrong
   design, not a stale deploy (device qmd was byte-identical to the tree).
 - "No outline on dark areas" was BY v0.43 DESIGN: a dark band rendered white
   glyphs with the halo model at 0 — no outline existed to see.
@@ -336,12 +336,12 @@ on-device round; deployed):
 
 ## Closed / settled this session (do not reopen)
 
-- Default clock cadence stays 5 minutes (owner ruling, commit 1773a52).
+- Default clock cadence stays 5 minutes (owner ruling, commit b6887f5).
 - Date format `Tue, 19 Aug` accepted — comma after weekday is standard
   written English; revisit only on community feedback.
 - Device-sized bar (v0.35) left to community testing on 10"/13" panels.
 - v0.36's translucent-renders-as-white: superseded by v0.38, not a bug to fix.
-- vpdd 50 + window 3 productionized and deployed (368a08d); w8/v50 rejected.
+- vpdd 50 + window 3 productionized and deployed (2995ac7); w8/v50 rejected.
 
 ## Separate sessions (NOT versions in this plan)
 
@@ -352,7 +352,7 @@ on-device round; deployed):
   charge). Start from scratch, do not rescue the old qmd (it stays available
   in git history before this removal for reference only).
 - Chromeless capture idea (active chrome-hide + forced repaint inside the
-  <150ms 0->2 window; delayed-shot probe 313c35d was NEGATIVE for passive
+  <150ms 0->2 window; delayed-shot probe 1f89135 was NEGATIVE for passive
   shots; the mod-forced variant is untested). NOTE: v0.41's Bug A finding is
   directly relevant — the tree hides chrome at entry ANYWAY; the open
   question is only whether a repaint lands in the fb before the sleep window.
@@ -361,8 +361,8 @@ on-device round; deployed):
 ## After the fix waves
 
 - Packaging round: scripts/package.sh (builds/installs all 4 packages,
-  version single-sourced — already hardened 2026-08-19, commits a210905..
-  1773a52; see DEFERRED for the compressed list). Do not package before the
+  version single-sourced — already hardened 2026-08-19, commits 6e7df79..
+  b6887f5; see DEFERRED for the compressed list). Do not package before the
   fix waves are green.
 - VELBUILD source/sha512sums: at publish time only.
 - Open owner decisions still parked: purge hook design round.
