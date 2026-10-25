@@ -1,4 +1,4 @@
-# Backlog — v0.46.0 release (updated 2026-10-24)
+# Backlog — v0.46.1 release (updated 2026-10-25)
 
 Inventory of everything still open across DEFERRED.md, fix-wave-plan.md,
 mod-wave-plan.md and the v0.45.x commit history. One line each; sources in
@@ -9,7 +9,7 @@ problems seen, so move to release. Further refinement buys marginal gains;
 everything under "Parked" waits for user feedback. Timezone and locale stay
 terminal-settable (README SSH recipe); no picker mod.
 
-## Release (in progress)
+## Release v0.46.1 (published 2026-10-25; upstream PRs pending)
 
 - **Build environment** — DONE 2026-10-25. zig 0.17.0 and Rust stable
   (Homebrew/rustup); `research/qmldiff` at 25681c3 (the submodule pin of
@@ -39,13 +39,14 @@ terminal-settable (README SSH recipe); no picker mod.
   2026-08-16: 34s re-suspend window clamped to 3s), so the two-month soak
   and its 0.43–0.57 %/h drain include it. The packages do not ship it;
   released users get the README's 34s-window numbers (~0.9 %/h at 5 min).
-  Owner decision: ship as is, or package the clamp.
+  Owner ruling 2026-10-25: v0.46.1 ships without it; packaging it is a
+  separate study for a future release (branch `w4clamp-packaging`).
 - **OS target** — 3.27 only (owner ruling 2026-10-25); 3.28/3.29 ports
   are left to the community.
 - **Upstream tooling check** — DONE 2026-10-25 on local-source test
   copies: `validate-velbuild.sh` PASS, vbuild 0.0.36 `gen` + upstream
   `apkbuild-lint` clean, `vbuild checksum` + `vbuild all` build both apks.
-  All 15 payload files are byte-identical to the vellum-installed files
+  All payload files are byte-identical to the vellum-installed files
   on the tablet; only the post-os-upgrade hook differs (vbuild generates
   it from `postosupgrade()`, same two commands). Harness on macOS:
   vbuild from source (`research/vbuild`, 0.0.36) in `research/vbuild-venv`,
@@ -53,15 +54,19 @@ terminal-settable (README SSH recipe); no picker mod.
   macOS bash 3.2 breaks it), `SSL_CERT_FILE=/etc/ssl/cert.pem`, Podman
   socket as CONTAINER_HOST, and a local-only patch pinning the x86_64-only
   vbuild-builder image to `linux/amd64`.
-- **Publish** — recipes are in upstream format (maintainer
-  yan.geruch@gmail.com, `source=` from the tag, fastshot as release asset
-  `fastshot-aarch64.so`, LICENSE + SOURCES, clock lifecycle as VELBUILD
-  functions); `sha512sums` filled after the tag. Steps: force-push the
-  author-rewritten main, tag `v0.46.1`, GitHub release with
-  `dist/release/v0.46.1/fastshot-aarch64.so`, checksums, then the owner's
-  upstream PRs (one per package). Upstream closes PRs whose description an
-  LLM wrote and wants human-authored commits, so the owner writes and
-  opens them.
+- **Publish** — DONE 2026-10-25 except the upstream PRs. Rewrote main's
+  author and committer to yan.geruch@gmail.com (old main kept locally as
+  `backup/pre-email-rewrite`; doc-cited commit IDs remapped), force-pushed
+  with a lease, tagged `v0.46.1`, GitHub release with
+  `fastshot-aarch64.so`. Recipes carry `sha512sums` from the published
+  files: all 14 match the tag and the tested binary; a `vbuild all` from
+  the published sources gives 16 payload files identical to the tablet.
+- **Upstream PRs** — owner: copy each `packaging/<pkg>/VELBUILD` into a
+  fork of vellum-dev/vellum under `packages/<pkg>/`, one PR per package
+  (main first; the clock depends on it), description written by the
+  owner. Upstream closes PRs whose description an LLM wrote and wants
+  human-authored commits. `README.md`'s `vellum add` install route works
+  only once these are published.
 
 ## Closed 2026-10-24
 
