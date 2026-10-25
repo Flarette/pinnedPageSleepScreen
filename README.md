@@ -207,8 +207,9 @@ Stock OS makes each wake expensive; the companion's hooks fix that:
   (interactive-latency optimization). 30 s hold vs 34 s re-suspend left no
   margin: ~30 % of re-suspends aborted (`g2194-regulator: Can't suspend,
   vpdd timer running`), costing ~60 s extra awake each. Our hook drops the
-  hold to **6 s during battery sleep** — the g2194 driver's own upstream
-  default (reMarkable's device tree overrides it to 30 s). Per the GPL
+  hold to **50 ms during battery sleep** — the smallest nonzero entry in
+  the g2194 driver's hold table (0 is avoided: it reverses the panel
+  power-down order and logs a kernel warning). Per the GPL
   kernel source, the hold starts only after the display pipeline releases
   the regulator, so **no hold length can clip a running waveform**.
 - **WiFi/BT reload gate** — see the footprint list above. Clock wakes are

@@ -1,7 +1,7 @@
 # Sleep-clock companion — carries EVERYTHING that touches system folders,
 # so the main mod stays reviewable as pure mod space. What it does:
 #   /usr/lib/systemd/system-sleep/sleep-zz-pinsleep.sh  (NEW) shrink the EPD
-#       rail keep-alive (vpdd 30000->6000) during battery sleep so the 34s
+#       rail keep-alive (vpdd 30000->50) during battery sleep so the 34s
 #       re-suspend never aborts; stock behavior on USB power / user wakes.
 #   /usr/lib/systemd/system-sleep/sleep-wifi.sh    (REPLACES stock) adds a
 #       gate: skip the WiFi/BT driver reload on RTC clock wakes on battery.
