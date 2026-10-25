@@ -4,11 +4,14 @@
 # in extensions/fastshot/). No system folders touched — reviewable without
 # system-modification caution. The sleep-clock companion package
 # (pinned-sleep-clock) carries everything that touches the system.
+maintainer="Flarette <92332304+Flarette@users.noreply.github.com>"
 pkgname=pinned-page-sleep-screen
-pkgver=0.46.0
+pkgver=0.46.1
 pkgrel=0
+upstream_author="Flarette"
+category="ui"
 pkgdesc="Pin a document page — or the live screen — as the sleep screen; optional clock/battery bar"
-url="https://github.com/YanGeruch/pinnedPageSleepScreen"
+url="https://github.com/$upstream_author/pinnedPageSleepScreen"
 arch="aarch64"
 license="GPL-3.0-or-later"
 # remarkable-os range: the qmd's hashes are built against 3.27 QML.
@@ -22,6 +25,20 @@ depends="!mini-light-sleep
 	qt-resource-rebuilder xovi-message-broker qt-command-executor
 	framebuffer-spy rm-shot rmppmove
 	remarkable-os>=3.27 remarkable-os<3.28"
+_release="v$pkgver"
+_raw="https://raw.githubusercontent.com/$upstream_author/pinnedPageSleepScreen/$_release"
+readmeurl="$_raw/README.md"
+# fastshot.so is a release asset: the exact ELF scripts/package.sh built
+# from extensions/fastshot/ and tested on device (rm-shot's pattern).
+source="
+https://github.com/$upstream_author/pinnedPageSleepScreen/releases/download/$_release/fastshot-aarch64.so
+$_raw/src/pinnedPageSleepScreen.qmd
+$_raw/assets/pinnedSleepScreen.svg
+$_raw/assets/pinnedSleepScreenPinned.svg
+$_raw/assets/pinnedSleepBolt.svg
+$_raw/assets/pinnedSleepBoltInv.svg
+$_raw/LICENSE
+"
 options="!check"
 
 package() {
@@ -37,6 +54,14 @@ package() {
 		"$pkgdir"/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepBolt.svg
 	install -Dm644 "$srcdir"/pinnedSleepBoltInv.svg \
 		"$pkgdir"/home/root/xovi/exthome/qt-resource-rebuilder/pinnedSleepBoltInv.svg
-	install -Dm755 "$srcdir"/fastshot.so \
+	install -Dm755 "$srcdir"/fastshot-aarch64.so \
 		"$pkgdir"/home/root/xovi/extensions.d/fastshot.so
+
+	install -Dm644 "$srcdir"/LICENSE \
+		"$pkgdir"/home/root/.vellum/licenses/$pkgname/LICENSE
+	echo "$url/archive/refs/tags/$_release.tar.gz" > \
+		"$pkgdir"/home/root/.vellum/licenses/$pkgname/SOURCES
 }
+# filled at publish time from the tagged files and the release asset
+sha512sums="
+"

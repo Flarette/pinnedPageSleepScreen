@@ -6,7 +6,7 @@ pkgname=hide-sidebar-guides
 pkgver=0.1.0
 pkgrel=0
 pkgdesc="Hide the Guides entry in the xochitl navigator sidebar"
-url="https://github.com/YanGeruch/pinnedPageSleepScreen"
+url="https://github.com/Flarette/pinnedPageSleepScreen"
 arch="aarch64"
 license="GPL-3.0-or-later"
 # remarkable-os range: the qmd's hashes are built against 3.27 QML.

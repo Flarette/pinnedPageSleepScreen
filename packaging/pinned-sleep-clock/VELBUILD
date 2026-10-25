@@ -12,13 +12,16 @@
 #       timer (the wake itself repaints the clock; service is /bin/true).
 #       Written to the REAL rootfs /etc via mount-utils (the /etc overlay
 #       upper is tmpfs — anything written through it dies on reboot).
-# Package data lands only in /home/root/.vellum/ (share + hook); all system
-# writes happen in the lifecycle scripts, so `vellum del` reverts cleanly.
+# Package data lands only in /home/root/.vellum/share; all system writes
+# happen in the lifecycle functions, so `vellum del` reverts cleanly.
+maintainer="Flarette <92332304+Flarette@users.noreply.github.com>"
 pkgname=pinned-sleep-clock
-pkgver=0.46.0
+pkgver=0.46.1
 pkgrel=0
+upstream_author="Flarette"
+category="ui"
 pkgdesc="System hooks + 5-min wake timer for the pinned-page-sleep-screen clock bar"
-url="https://github.com/YanGeruch/pinnedPageSleepScreen"
+url="https://github.com/$upstream_author/pinnedPageSleepScreen"
 arch="aarch64"
 license="GPL-3.0-or-later"
 # sysfs paths in the hooks (g2194 EPD PMIC, slg46824 wakeup reason) are
@@ -28,7 +31,18 @@ license="GPL-3.0-or-later"
 # lacks the timer re-assert contract these hooks now rely on.
 depends="pinned-page-sleep-screen>=$pkgver mount-utils rmppmove
 	remarkable-os>=3.27 remarkable-os<3.28"
-install="$pkgname.post-install $pkgname.post-upgrade $pkgname.pre-deinstall"
+_release="v$pkgver"
+_raw="https://raw.githubusercontent.com/$upstream_author/pinnedPageSleepScreen/$_release"
+readmeurl="$_raw/README.md"
+source="
+$_raw/packaging/pinned-sleep-clock/install.sh
+$_raw/packaging/pinned-sleep-clock/uninstall.sh
+$_raw/assets/system-sleep/sleep-zz-pinsleep.sh
+$_raw/assets/system-sleep/sleep-wifi.sh
+$_raw/assets/systemd/pinsleep-clock.service
+$_raw/assets/systemd/pinsleep-clock.timer
+$_raw/LICENSE
+"
 options="!check"
 
 package() {
@@ -39,6 +53,32 @@ package() {
 	install -Dm755 "$srcdir"/sleep-wifi.sh       "$share"/sleep-wifi.sh
 	install -Dm644 "$srcdir"/pinsleep-clock.service "$share"/pinsleep-clock.service
 	install -Dm644 "$srcdir"/pinsleep-clock.timer   "$share"/pinsleep-clock.timer
-	install -Dm755 "$srcdir"/post-os-upgrade \
-		"$pkgdir"/home/root/.vellum/hooks/post-os-upgrade/$pkgname
+
+	install -Dm644 "$srcdir"/LICENSE \
+		"$pkgdir"/home/root/.vellum/licenses/$pkgname/LICENSE
+	echo "$url/archive/refs/tags/$_release.tar.gz" > \
+		"$pkgdir"/home/root/.vellum/licenses/$pkgname/SOURCES
 }
+
+postinstall() {
+	/home/root/.vellum/share/pinned-sleep-clock/install.sh
+}
+
+postupgrade() {
+	postinstall
+}
+
+predeinstall() {
+	/home/root/.vellum/share/pinned-sleep-clock/uninstall.sh
+}
+
+postosupgrade() {
+	# `vellum reenable` after an OTA replaced the rootfs: our hooks are gone
+	# and the OS's own (possibly newer) sleep-wifi.sh is back. Drop the old
+	# stock backup so install.sh re-captures the NEW stock before re-gating.
+	rm -f /home/root/.pinnedSleepScreen/sleep-wifi.sh.stock
+	/home/root/.vellum/share/pinned-sleep-clock/install.sh
+}
+# filled at publish time from the tagged files
+sha512sums="
+"

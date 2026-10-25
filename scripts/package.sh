@@ -85,6 +85,14 @@ cp packaging/pinned-sleep-clock/post-install.sh \
    packaging/pinned-sleep-clock/pre-deinstall.sh "$STAGE/clock/"
 chmod 0755 "$SHARE"/*.sh "$CLOCK/home/root/.vellum/hooks/post-os-upgrade/pinned-sleep-clock"
 
+# license + SOURCES, installed exactly as the upstream recipes do
+for pair in "$MAIN pinned-page-sleep-screen" "$CLOCK pinned-sleep-clock"; do
+	lic=${pair% *}/home/root/.vellum/licenses/${pair#* }
+	mkdir -p "$lic"
+	cp LICENSE "$lic/"
+	echo "https://github.com/Flarette/pinnedPageSleepScreen/archive/refs/tags/v$VER.tar.gz" > "$lic/SOURCES"
+done
+
 # ---- build on device -------------------------------------------------------
 ssh "$DEV" 'rm -rf /tmp/velbuild && mkdir -p /tmp/velbuild'
 # COPYFILE_DISABLE: macOS tar otherwise embeds AppleDouble ._* entries and

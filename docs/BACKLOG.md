@@ -11,25 +11,32 @@ terminal-settable (README SSH recipe); no picker mod.
 
 ## Release (in progress)
 
-- **Build environment** — the gitignored `research/` tree (qmldiff,
-  device-qml, preflight set, xovi clone for xovigen) and the zig and Rust
-  toolchains are gone from the dev Mac; `package.sh` and `deploy.sh` both
-  stop at their first step without them. Rebuild before any packaging.
-- **Packaging round** — `scripts/package.sh` across all packages; both
-  VELBUILDs bumped to 0.46.0 (2026-10-24). Repo matches the device
-  byte-for-byte (qmds, SVGs, hooks, units; fastshot 0.11.0 banner).
+- **Build environment** — the gitignored `research/` tree and the zig and
+  Rust toolchains were gone from the dev Mac. Restored 2026-10-25: zig
+  0.17.0 and Rust stable via Homebrew/rustup, `research/qmldiff` at
+  25681c3 (the submodule pin of xovi-extensions v19-23052026, the
+  device's qt-resource-rebuilder 19.0.0), `research/xovi` at v0.3.3;
+  fastshot builds and embeds 0.11.0. Still missing: `research/device-qml`
+  and `research/preflight` (need the tablet: xochitl binary, installed
+  qmds, hashtab).
+- **Packaging round** — `scripts/package.sh` across all packages. Release
+  is v0.46.1: v0.46.0 plus the error page's issues link moved from the
+  renamed YanGeruch account to Flarette (GitHub frees renamed names, so
+  the redirect is not permanent). fastshot.so rebuilt with zig 0.17 —
+  needs its on-device load check.
 - **vellum install/uninstall round-trip** — never run against the current
   recipes: the device's vellum DB still says 0.31.2 and every version since
   arrived through `deploy.sh`. Upgrade, `vellum del` both, check the stock
   hook is back and other mods still load, `vellum add` again.
-- **OS target** — recipes pin `remarkable-os>=3.27 <3.28`; upstream vellum
-  moved to 3.28 (2026-09) and 3.29 (2026-10-22). Publish 3.27-only or port
-  first; owner decision.
-- **Publish** — tag, GitHub release with the fastshot `.so` as an asset,
-  VELBUILD `source=`/`sha512sums=` (upstream pattern: rm-shot), then the
-  upstream submission, which the owner makes (upstream does not accept
-  agent-opened PRs). Upstream recipes declare lifecycle scripts as VELBUILD
-  functions; the clock recipe's abuild-style `install=` files need porting.
+- **OS target** — 3.27 only (owner ruling 2026-10-25); 3.28/3.29 ports
+  are left to the community.
+- **Publish** — recipes are in upstream format (maintainer, `source=`
+  from the tag, fastshot as release asset `fastshot-aarch64.so`, LICENSE +
+  SOURCES, clock lifecycle as VELBUILD functions); `sha512sums` filled
+  after the tag. Steps: push, tag `v0.46.1`, GitHub release with the
+  tested `.so`, checksums, then the owner's upstream PR. Upstream closes
+  PRs whose description an LLM wrote and wants human-authored commits, so
+  the owner writes and opens it.
 
 ## Closed 2026-10-24
 

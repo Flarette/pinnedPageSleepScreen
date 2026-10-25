@@ -1,4 +1,4 @@
-; pinnedPageSleepScreen v0.46.0
+; pinnedPageSleepScreen v0.46.1
 ; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
@@ -3120,7 +3120,7 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 						font.weight: Font.Medium
 						antialiasing: false
 						text: qsTr("If this keeps happening, restart the device (hold the power button) and please report it:")
-							+ "\ngithub.com/YanGeruch/pinnedPageSleepScreen/issues"
+							+ "\ngithub.com/Flarette/pinnedPageSleepScreen/issues"
 					}
 				}
 			}
