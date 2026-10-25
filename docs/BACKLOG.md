@@ -78,6 +78,32 @@ terminal-settable (README SSH recipe); no picker mod.
   may ask for a hashed copy: `qmldiff hash-diffs <hashtab> <qmd>`, retest
   on the tablet, ship it as a release asset, bump `pkgrel`.
 
+## Post-release bugs (open 2026-10-25)
+
+Owner reports after pinning NeuroSmug (dense full-color PDF page). Upstream
+PRs wait until these are understood.
+
+- **Grey screen sticks after quick sleeps** — after about 12 sleep→wake
+  cycles woken within 2–3 s, the panel stays in the grey fast-update mode
+  until a full refresh; firmware normally settles it in 5–10 s. Captures
+  taken during it hold normal full-color pixels, so the panel's update
+  mode is stuck, not the image. Regression A/B, DEPLOYED 2026-10-25 17:02:
+  the tablet runs the pre-release build, hand-copied over the vellum files.
+  The qmd is v0.46.0 (from 778955d). fastshot 0.11.0 is built from the
+  same source with zig 0.16.0, the latest release two months ago (tarball
+  sha256 `b23d70de…1489`, .so md5 `756d65bd…53ba`). The v0.46.1 files
+  are backed up in `/home/root/.pinnedSleepScreen/ab-backup-v0461/`. To
+  restore, stage the .so in `/tmp` and `mv` it into place, copy the qmd
+  back, then `systemctl reset-failed xochitl` and restart.
+- **Stale chapter 0 after reopen** — `reload()` starts the chrome hold only
+  if the toolbar is hidden when the pinned page loads. xochitl reopens a
+  document with the toolbar as it was at close, so after a close with the
+  toolbar up, no clean ch0 is taken and the last wake's ch0 survives, even
+  after strokes in it were erased. Open question: a stale ch0 shows only
+  in the toolbar band, yet the owner saw old strokes across the page, so
+  ch1 may also be dropped at sleep. The fix (hold on every open vs. drop
+  chapters older than the open) waits for that answer.
+
 ## Closed 2026-10-24
 
 - **Live-use observations** — light→deep escalation fix, luma sampling
