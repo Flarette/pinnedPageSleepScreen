@@ -113,6 +113,13 @@ static int writeFileAtomic(const char *path, const uint8_t *data, size_t size) {
         if (w <= 0) { close(fd); unlink(tmp); return 0; }
         off += (size_t)w;
     }
+    /* Re-stamp mtime now that the pixels are complete (0.11.1). Linux sets it
+     * when write() STARTS, from the coarse clock, so a whole-buffer write left
+     * it ~4ms after a capture's pre-grab ts minus up to a tick of clock lag —
+     * the sleep window's mtime >= ts gate then dropped fresh chapters
+     * (journal-proven 2026-10-25: mtime .006 vs ts .007). Best effort: on
+     * failure the start-of-write stamp stays, as before. */
+    futimens(fd, NULL);
     close(fd);
     if (rename(tmp, path) != 0) { unlink(tmp); return 0; }
     return 1;

@@ -87,22 +87,37 @@ PRs wait until these are understood.
   cycles woken within 2–3 s, the panel stays in the grey fast-update mode
   until a full refresh; firmware normally settles it in 5–10 s. Captures
   taken during it hold normal full-color pixels, so the panel's update
-  mode is stuck, not the image. Regression A/B, DEPLOYED 2026-10-25 17:02:
-  the tablet runs the pre-release build, hand-copied over the vellum files.
-  The qmd is v0.46.0 (from 778955d). fastshot 0.11.0 is built from the
-  same source with zig 0.16.0, the latest release two months ago (tarball
-  sha256 `b23d70de…1489`, .so md5 `756d65bd…53ba`). The v0.46.1 files
-  are backed up in `/home/root/.pinnedSleepScreen/ab-backup-v0461/`. To
-  restore, stage the .so in `/tmp` and `mv` it into place, copy the qmd
-  back, then `systemctl reset-failed xochitl` and restart.
+  mode is stuck, not the image. During the glitch, strokes drawn on screen
+  were never added to the document (no save from 16:34 to the 16:55 close;
+  the next wake erased them). Regression A/B, 17:02: the pre-release build
+  (qmd v0.46.0 from 778955d; fastshot 0.11.0, .so md5 `756d65bd…53ba`)
+  ran 18 sleeps, 16 woken within 5 s, with no glitch and a save after
+  every round. That .so's code came from zig's August cache (Homebrew
+  clang 21.1.8), linked by the official zig 0.16.0; the release .so is
+  Homebrew zig 0.17.0 (clang 22.1.8). Not yet separated from chance or
+  the install route: rerun the dose on a zig 0.17 build of the current
+  source. The v0.46.1 files are backed up in
+  `/home/root/.pinnedSleepScreen/ab-backup-v0461/`.
+- **Last stroke missing from the sleep screen** — FIXED in v0.46.2 +
+  fastshot 0.11.1, DEPLOYED 2026-10-25 17:57 (hand-copied over the vellum
+  files; .so md5 `a54cfc6c…de3c`, official zig 0.16.0, clang 21.1.0).
+  The sleep window drops any chapter whose file mtime is older than its
+  ts. fastshot writes each BMP in one `write()`, and Linux stamps mtime
+  when that call starts, from the coarse clock, so a pre-grab ts left a
+  margin of a few ms minus clock lag. Digit test proof: the sleep-entry
+  chapter held the new "8", its mtime floored to .006 against ts .007,
+  and the painted sleep frame (read from xochitl's memory) showed the
+  previous clean ch0 without it. Fix: fastshot re-stamps mtime with
+  `futimens` after the write; the sleep-entry capture takes its ts from
+  its own file. Pending: owner retest.
 - **Stale chapter 0 after reopen** — `reload()` starts the chrome hold only
   if the toolbar is hidden when the pinned page loads. xochitl reopens a
   document with the toolbar as it was at close, so after a close with the
   toolbar up, no clean ch0 is taken and the last wake's ch0 survives, even
-  after strokes in it were erased. Open question: a stale ch0 shows only
-  in the toolbar band, yet the owner saw old strokes across the page, so
-  ch1 may also be dropped at sleep. The fix (hold on every open vs. drop
-  chapters older than the open) waits for that answer.
+  after strokes in it were erased. On its own this shows only in the
+  toolbar band; the full-page stale images came from the dropped chapter
+  above. Fix (hold on every open vs. drop chapters older than the open) is
+  the owner's call.
 
 ## Closed 2026-10-24
 

@@ -1,5 +1,9 @@
-; pinnedPageSleepScreen v0.46.1
-; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.0 for
+; pinnedPageSleepScreen v0.46.2
+; REQUIRES the fastshot xovi extension (extensions/fastshot >= 0.11.1 for
+; end-of-write mtimes — an older build leaves a capture's mtime at the START of
+; its write, only a few ms past the chapter's ts at best, so the freshness gate
+; intermittently drops fresh async chapters (the sleep-entry chapter is stamped
+; from its own file and stays safe either way); >= 0.11.0 for
 ; fastLuma's edge-relative rects (negative x/y = from the far edge) — the
 ; dynamic verdict samples the band in PHYSICAL image coordinates BEFORE the
 ; window is sized (an older build clamps a negative offset to 0, so the
@@ -1337,15 +1341,27 @@ AFFECT /qml/device/view/documentview/DeviceSceneView.qml
 					// and a failed one must not leave the book pointing at a stale image
 					// the sleep window is about to read. No sidecar path — power.json is
 					// the Navigator's record and writing it here would clobber it.
-					// ts BEFORE the grab (v0.41): applyPinned's freshness gate drops any
-					// chapter whose file mtime is OLDER than its ts, zero tolerance —
-					// its invariant is "the write always follows the ts". Stamping
-					// after a synchronous grab put mtime a few ms behind and every
-					// sleep-entry chapter was rejected at read time.
+					// ts from the FILE (v0.46.2): applyPinned's freshness gate drops any
+					// chapter whose file mtime is OLDER than its ts, zero tolerance.
+					// v0.41 stamped Date.now() before the grab, assuming mtime marks
+					// the END of the write — Linux stamps it when write() starts, from
+					// the coarse clock, so the margin was ~4ms minus a tick of lag and
+					// the chapter of the stroke the user just made was dropped at read
+					// time (journal-proven 2026-10-25: mtime .006 vs ts .007; fastshot
+					// 0.11.1 now re-stamps at the end). The gate guards async grabs
+					// that publish before their pixels; this one is synchronous and
+					// published only after a good grab, so the file's own mtime is the
+					// honest ts. The earlier of the two keeps it correct on any .so.
 					var ts0 = Date.now();
 					var r = pinSleepBroker.sendSimpleSignal("fastShot",
 						pinSleepWatch.capDirPath + file);
 					if (("" + r).indexOf("ok:") !== 0) return;
+					var st = "" + pinSleepBroker.sendSimpleSignal("fastStat",
+						pinSleepWatch.capDirPath + file);
+					// never |0 a millisecond stamp — Date.now() overflows int32
+					var mt = st.indexOf("ok:") === 0
+						? parseFloat(st.replace("ok:", "").split(",")[1]) : NaN;
+					if (isFinite(mt) && mt < ts0) ts0 = mt;
 					if (head) head.ts = ts0;
 					else kept.push({ "file": file, "chrome": rects, "transform": tf, "ts": ts0 });
 					pinSleepWatch.chapters = kept;
@@ -1949,11 +1965,15 @@ AFFECT /qt/qml/xofm/modules/sleepscreen/qml/default/sleep-window-opaque.qml
 					// re-pin is a DIFFERENT DOCUMENT's page. fastStat answers
 					// "ok:<size>,<mtime_ms>"; a chapter counts only if its file's mtime
 					// is not older than the entry's ts.
-					// The tolerance is exactly ZERO, deliberately: both stamps come from
-					// the same CLOCK_REALTIME and both floor to whole ms, and the write
-					// always follows the ts, so mtime >= ts holds for every honest
-					// chapter. Any positive slack would have to exceed the capture delays
-					// (200-600ms) to buy anything — and that is precisely the window the
+					// The tolerance is exactly ZERO, deliberately: both stamps floor to
+					// whole ms, and mtime >= ts holds for every honest chapter because
+					// fastshot >= 0.11.1 stamps mtime when the write ENDS (~70ms after
+					// any pre-grab ts, far past the coarse clock's lag) and the
+					// sleep-entry chapter takes its ts from its own file (v0.46.2 —
+					// before both, mtime marked the write's START and fresh chapters
+					// were dropped by a millisecond). Any positive slack would have to
+					// exceed the capture delays (200-600ms) to buy anything — and that
+					// is precisely the window the
 					// race lives in. The one false-drop source left is a backwards clock
 					// step between save and grab, which fails toward stock, never toward
 					// another document's pixels.
