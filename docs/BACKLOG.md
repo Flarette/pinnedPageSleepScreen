@@ -25,8 +25,9 @@ terminal-settable (README SSH recipe); no picker mod.
   (reproducible: two clean builds, same md5); the tested ELF is kept at
   `dist/release/v0.46.1/fastshot-aarch64.so`. Injected button sleep:
   `captured:true`, current.bmp written, bar shows date, clock, bolt and
-  battery %. Still open: open a PDF once (extensions also load in the
-  PDF renderer).
+  battery %. PDF check passed the same day: the PDF renderer loaded
+  fastshot 0.11.0 and rendered pages, with no `Cannot load extension`
+  and no `renderer exited`.
 - **vellum round-trip** — DONE 2026-10-25: upgrade, `vellum del` both
   (stock `sleep-wifi.sh` restored byte-identical, zz hook, units and mod
   files gone, vpdd back to 30000, xovi drop-in intact; restart = 28 other
