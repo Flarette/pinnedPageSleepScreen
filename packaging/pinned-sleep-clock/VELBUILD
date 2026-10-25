@@ -14,7 +14,7 @@
 #       upper is tmpfs — anything written through it dies on reboot).
 # Package data lands only in /home/root/.vellum/share; all system writes
 # happen in the lifecycle functions, so `vellum del` reverts cleanly.
-maintainer="Flarette <92332304+Flarette@users.noreply.github.com>"
+maintainer="Yan Kotliarov <yan.geruch@gmail.com>"
 pkgname=pinned-sleep-clock
 pkgver=0.46.1
 pkgrel=0

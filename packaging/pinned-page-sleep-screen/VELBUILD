@@ -4,7 +4,7 @@
 # in extensions/fastshot/). No system folders touched — reviewable without
 # system-modification caution. The sleep-clock companion package
 # (pinned-sleep-clock) carries everything that touches the system.
-maintainer="Flarette <92332304+Flarette@users.noreply.github.com>"
+maintainer="Yan Kotliarov <yan.geruch@gmail.com>"
 pkgname=pinned-page-sleep-screen
 pkgver=0.46.1
 pkgrel=0
