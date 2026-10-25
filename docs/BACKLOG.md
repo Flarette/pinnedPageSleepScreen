@@ -41,13 +41,26 @@ terminal-settable (README SSH recipe); no picker mod.
   Owner decision: ship as is, or package the clamp.
 - **OS target** — 3.27 only (owner ruling 2026-10-25); 3.28/3.29 ports
   are left to the community.
-- **Publish** — recipes are in upstream format (maintainer, `source=`
-  from the tag, fastshot as release asset `fastshot-aarch64.so`, LICENSE +
-  SOURCES, clock lifecycle as VELBUILD functions); `sha512sums` filled
-  after the tag. Steps: push, tag `v0.46.1`, GitHub release with the
-  tested `.so`, checksums, then the owner's upstream PR. Upstream closes
-  PRs whose description an LLM wrote and wants human-authored commits, so
-  the owner writes and opens it.
+- **Upstream tooling check** — DONE 2026-10-25 on local-source test
+  copies: `validate-velbuild.sh` PASS, vbuild 0.0.36 `gen` + upstream
+  `apkbuild-lint` clean, `vbuild checksum` + `vbuild all` build both apks.
+  All 15 payload files are byte-identical to the vellum-installed files
+  on the tablet; only the post-os-upgrade hook differs (vbuild generates
+  it from `postosupgrade()`, same two commands). Harness on macOS:
+  vbuild from source (`research/vbuild`, 0.0.36) in `research/vbuild-venv`,
+  Homebrew bash 5 first on PATH (its parser reads `declare -p` output;
+  macOS bash 3.2 breaks it), `SSL_CERT_FILE=/etc/ssl/cert.pem`, Podman
+  socket as CONTAINER_HOST, and a local-only patch pinning the x86_64-only
+  vbuild-builder image to `linux/amd64`.
+- **Publish** — recipes are in upstream format (maintainer
+  yan.geruch@gmail.com, `source=` from the tag, fastshot as release asset
+  `fastshot-aarch64.so`, LICENSE + SOURCES, clock lifecycle as VELBUILD
+  functions); `sha512sums` filled after the tag. Steps: force-push the
+  author-rewritten main, tag `v0.46.1`, GitHub release with
+  `dist/release/v0.46.1/fastshot-aarch64.so`, checksums, then the owner's
+  upstream PRs (one per package). Upstream closes PRs whose description an
+  LLM wrote and wants human-authored commits, so the owner writes and
+  opens them.
 
 ## Closed 2026-10-24
 
